@@ -1,5 +1,6 @@
-export function createInput(targetElement, onDrag) {
+export function createInput(targetElement, onDrag, bindings = {}) {
   const keys = {};
+  const actionLatch = {};
 
   let isDragging = false;
   let lastMouseX = 0;
@@ -7,7 +8,7 @@ export function createInput(targetElement, onDrag) {
 
   function handleKeyDown(event) {
     keys[event.code] = true;
-    if (event.code.startsWith("Arrow")) event.preventDefault();
+    if (event.code.startsWith("Arrow") || isBoundToAction(event.code, bindings)) event.preventDefault();
   }
 
   function handleKeyUp(event) {
@@ -42,6 +43,32 @@ export function createInput(targetElement, onDrag) {
   targetElement.addEventListener("mousedown", handleMouseDown);
 
   return {
-    keys
+    keys,
+    bindings,
+    isActionDown(action) {
+      const codes = bindings[action] || [];
+      return codes.some(code => Boolean(keys[code]));
+    },
+    isActionPressed(action) {
+      const pressed = this.isActionDown(action);
+      if (pressed) {
+        if (actionLatch[action]) return false;
+        actionLatch[action] = true;
+        return true;
+      }
+
+      actionLatch[action] = false;
+      return false;
+    },
+    rebindAction(action, code) {
+      bindings[action] = [code];
+    },
+    clearAction(action) {
+      bindings[action] = [];
+    }
   };
+}
+
+function isBoundToAction(code, bindings) {
+  return Object.values(bindings).some(codes => Array.isArray(codes) && codes.includes(code));
 }

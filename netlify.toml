@@ -1,0 +1,15 @@
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Content-Type = "text/javascript"
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/src/**/*.js"
+  [headers.values]
+    Content-Type = "text/javascript"
+    Cache-Control = "no-cache"

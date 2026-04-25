@@ -73,7 +73,13 @@ export function buildWorldRuntime(scene, definition) {
     enemies.push({
       mesh,
       defeated: false,
-      phase: enemyDef.phase || Math.random() * Math.PI * 2
+      phase: enemyDef.phase || Math.random() * Math.PI * 2,
+      originX: enemyDef.x,
+      originY: enemyDef.y,
+      originZ: enemyDef.z,
+      driftX: enemyDef.driftX ?? (0.55 + Math.random() * 0.35),
+      driftZ: enemyDef.driftZ ?? (0.45 + Math.random() * 0.3),
+      driftY: enemyDef.driftY ?? (0.12 + Math.random() * 0.08)
     });
   }
 
@@ -148,7 +154,9 @@ export function buildWorldRuntime(scene, definition) {
         enemy.mesh.material.emissive.setRGB(0.45 + pulse * 0.35, 0.08 + pulse * 0.2, 0.08 + pulse * 0.2);
       }
 
-      enemy.mesh.position.y += Math.sin(elapsed * 3 + enemy.phase) * 0.0018;
+      enemy.mesh.position.x = enemy.originX + Math.sin(elapsed * enemy.driftX + enemy.phase) * 0.9;
+      enemy.mesh.position.z = enemy.originZ + Math.cos(elapsed * enemy.driftZ + enemy.phase) * 0.7;
+      enemy.mesh.position.y = enemy.originY + Math.sin(elapsed * 2.8 + enemy.phase) * enemy.driftY;
       enemy.mesh.rotation.y += dt * 2;
     }
 

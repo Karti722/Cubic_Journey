@@ -1,4 +1,4 @@
-export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub }) {
+export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub, onUnlockAllSkills, onResetSkills, onMaxCurrency }) {
   const root = document.createElement("div");
   root.style.position = "fixed";
   root.style.inset = "0";
@@ -56,6 +56,39 @@ export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub 
       close();
     });
     hubButton.style.background = "#184f3a";
+
+    if (typeof onUnlockAllSkills === "function" || typeof onResetSkills === "function" || typeof onMaxCurrency === "function") {
+      const skillLab = document.createElement("div");
+      skillLab.style.marginTop = "18px";
+      skillLab.style.padding = "12px";
+      skillLab.style.border = "1px solid rgba(255,255,255,0.16)";
+      skillLab.style.background = "rgba(255,255,255,0.05)";
+      panel.appendChild(skillLab);
+
+      const skillTitle = document.createElement("div");
+      skillTitle.textContent = `Skill Lab | Owned: ${model.skillCount || 0} | Coins: ${model.currency || 0}`;
+      skillTitle.style.fontWeight = "700";
+      skillTitle.style.marginBottom = "10px";
+      skillLab.appendChild(skillTitle);
+
+      const skillButtons = document.createElement("div");
+      skillButtons.style.display = "flex";
+      skillButtons.style.gap = "10px";
+      skillButtons.style.flexWrap = "wrap";
+      skillLab.appendChild(skillButtons);
+
+      if (typeof onUnlockAllSkills === "function") {
+        addButton(skillButtons, "Unlock All Skills", () => onUnlockAllSkills());
+      }
+
+      if (typeof onResetSkills === "function") {
+        addButton(skillButtons, "Reset Skills", () => onResetSkills());
+      }
+
+      if (typeof onMaxCurrency === "function") {
+        addButton(skillButtons, "Max Currency", () => onMaxCurrency());
+      }
+    }
 
     const worldsWrap = document.createElement("div");
     worldsWrap.style.display = "grid";

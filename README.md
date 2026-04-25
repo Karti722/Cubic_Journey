@@ -64,10 +64,10 @@ http://127.0.0.1:8123
 ## Project Structure
 
 - index.html: Page shell and module entry reference
-- src/main.js: App bootstrap
-- src/game.js: Game loop and core gameplay flow
-- src/world.js: Scene objects and platform collision helper
-- src/camera-controller.js: Camera orbit and movement basis
-- src/input.js: Keyboard and mouse input handling
-- src/three.js: Three.js CDN re-export
+- src/app/main.js: App bootstrap
+- src/app/game.js: Game loop and core gameplay flow
+- src/engine/three.js: Three.js CDN re-export
+- src/engine/input/input.js: Keyboard and mouse input handling
+- src/engine/camera/camera-controller.js: Camera orbit and movement basis
+- src/game/world/world.js: Scene objects and platform collision helper
 - serve.py: Local static server with JS MIME fix

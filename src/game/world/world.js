@@ -1,4 +1,4 @@
-import { THREE } from "./three.js";
+import { THREE } from "../../engine/three.js";
 
 export function createWorld(scene) {
   scene.background = new THREE.Color(0x87ceeb);

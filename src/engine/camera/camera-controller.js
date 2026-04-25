@@ -1,4 +1,4 @@
-import { THREE } from "./three.js";
+import { THREE } from "../three.js";
 
 export function createCameraController(camera, player) {
   let yaw = Math.atan2(-7, 9);

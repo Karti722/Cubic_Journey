@@ -1,7 +1,7 @@
-import { THREE } from "./three.js";
-import { createCameraController } from "./camera-controller.js";
-import { createInput } from "./input.js";
-import { createWorld, intersectsPlatform } from "./world.js";
+import { THREE } from "../engine/three.js";
+import { createCameraController } from "../engine/camera/camera-controller.js";
+import { createInput } from "../engine/input/input.js";
+import { createWorld, intersectsPlatform } from "../game/world/world.js";
 
 export function startGame(uiElement) {
   const scene = new THREE.Scene();
@@ -26,7 +26,7 @@ export function startGame(uiElement) {
     requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.033);
 
-    updateMovement(keys, cameraController, velocity, dt);
+    updateMovement(keys, cameraController, velocity);
     cameraController.updateFromKeys(keys, dt);
 
     if (grounded && keys.Space) {
@@ -72,7 +72,7 @@ export function startGame(uiElement) {
   animate();
 }
 
-function updateMovement(keys, cameraController, velocity, dt) {
+function updateMovement(keys, cameraController, velocity) {
   const speed = 8;
   velocity.x = 0;
   velocity.z = 0;

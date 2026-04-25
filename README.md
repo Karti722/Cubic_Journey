@@ -44,6 +44,27 @@ http://127.0.0.1:8123
 - M: Open the quick world menu
 - P / Esc: Pause the game and open the detailed menu
 
+## Debug Menu (Debug Branch Only)
+
+This feature exists only on the debug-menu branch and is intentionally isolated from the normal game branch.
+
+How to activate:
+
+- Press F10 while in game
+- Or press the Backquote key (the tilde key above Tab on most keyboards)
+
+How it works:
+
+- Opens a separate Debug Menu overlay
+- Lets you travel directly to the hub or any world/stage
+- Includes boss stages, including the final boss stage
+- Bypasses world and stage lock checks only when using this debug menu
+
+Branch behavior:
+
+- debug-menu branch: debug menu is enabled
+- main branch: debug menu is not included, and normal progression locks remain active
+
 ## Notes
 
 - The project uses JavaScript ES modules.
@@ -128,6 +149,7 @@ Tip: for a platformer, look for looping ambient tracks for the hub and slower ex
 - src/game/systems/interaction-system.js: Goal/collectible/portal interactions
 - src/game/ui/hud.js: Dynamic HUD rendering
 - src/game/ui/pause-menu.js: Detailed pause menu, controls, and world switching
+- src/game/debug/debug-menu.js: Branch-only debug travel menu and lock-bypass controls
 - src/game/audio/audio-engine.js: Background music and sound effect management
 - src/game/story/story-data.js: Story and boss names
 - src/game/persistence/save-store.js: localStorage save/load helpers

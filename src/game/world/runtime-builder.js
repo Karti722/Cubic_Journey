@@ -10,6 +10,7 @@ export function buildWorldRuntime(scene, definition) {
   const collectibles = [];
   const jumpPads = [];
   const dashOrbs = [];
+  const enemies = [];
   const portals = [];
 
   for (const platform of definition.platforms) {
@@ -60,6 +61,20 @@ export function buildWorldRuntime(scene, definition) {
     mesh.position.set(orb.x, orb.y, orb.z);
     root.add(mesh);
     dashOrbs.push({ mesh, collected: false });
+  }
+
+  for (const enemyDef of definition.enemies || []) {
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(enemyDef.radius || 0.6, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xff4444, emissive: 0x331111 })
+    );
+    mesh.position.set(enemyDef.x, enemyDef.y, enemyDef.z);
+    root.add(mesh);
+    enemies.push({
+      mesh,
+      defeated: false,
+      phase: enemyDef.phase || Math.random() * Math.PI * 2
+    });
   }
 
   let goal = null;
@@ -123,6 +138,20 @@ export function buildWorldRuntime(scene, definition) {
       dash.mesh.position.y += Math.sin(elapsed * 3.2 + dash.mesh.position.x) * 0.0025;
     }
 
+    for (const enemy of enemies) {
+      if (enemy.defeated) continue;
+      const pulse = (Math.sin(elapsed * 5 + enemy.phase) + 1) / 2;
+      const color = enemy.mesh.material.color;
+      color.setRGB(1, 0.22 + pulse * 0.78, 0.22 + pulse * 0.78);
+
+      if (enemy.mesh.material.emissive) {
+        enemy.mesh.material.emissive.setRGB(0.45 + pulse * 0.35, 0.08 + pulse * 0.2, 0.08 + pulse * 0.2);
+      }
+
+      enemy.mesh.position.y += Math.sin(elapsed * 3 + enemy.phase) * 0.0018;
+      enemy.mesh.rotation.y += dt * 2;
+    }
+
     for (const portal of portals) {
       portal.ring.rotation.z += dt * 1.8;
       portal.orb.position.y += Math.sin(elapsed * 2 + portal.worldIndex) * 0.003;
@@ -152,6 +181,7 @@ export function buildWorldRuntime(scene, definition) {
     collectibles,
     jumpPads,
     dashOrbs,
+    enemies,
     portals,
     goal,
     update,

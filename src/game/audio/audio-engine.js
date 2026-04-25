@@ -20,14 +20,14 @@ const SFX_FILES = {
 };
 
 export function createAudioEngine(trackMap = DEFAULT_TRACKS) {
-  const unlocked = new Map();
+  const sfxPool = createSfxPool(SFX_FILES, 4);
   const music = new Audio();
   music.loop = true;
   music.preload = "auto";
   music.volume = 0.55;
 
-  const sfxPool = new Map();
   let enabled = false;
+  let musicEnabled = true;
   let currentTrack = null;
 
   function unlock() {
@@ -51,11 +51,8 @@ export function createAudioEngine(trackMap = DEFAULT_TRACKS) {
     music.src = src;
     music.volume = options.volume ?? music.volume;
 
-    const playResult = music.play();
-    if (playResult && typeof playResult.catch === "function") {
-      playResult.catch(() => {
-        // Keep the engine enabled so future audio can work once files exist or a gesture unlocks playback.
-      });
+    if (musicEnabled) {
+      safePlay(music);
     }
 
     return true;
@@ -66,14 +63,19 @@ export function createAudioEngine(trackMap = DEFAULT_TRACKS) {
   }
 
   function resumeMusic() {
-    if (!enabled || !music.src) return false;
-    const result = music.play();
-    if (result && typeof result.catch === "function") {
-      result.catch(() => {
-        // Keep the engine available even if autoplay is blocked or the file is not present yet.
-      });
-    }
+    if (!enabled || !music.src || !musicEnabled) return false;
+    safePlay(music);
     return true;
+  }
+
+  function setMusicEnabled(nextEnabled) {
+    musicEnabled = Boolean(nextEnabled);
+    if (!musicEnabled) {
+      music.pause();
+      return;
+    }
+
+    resumeMusic();
   }
 
   function setVolume(volume) {
@@ -82,18 +84,17 @@ export function createAudioEngine(trackMap = DEFAULT_TRACKS) {
 
   function playSfx(name, volume = 0.8) {
     if (!enabled) return;
-    const src = SFX_FILES[name];
-    if (!src) return;
+    const pool = sfxPool.get(name);
+    if (!pool || pool.length === 0) return;
 
-    const audio = new Audio(src);
-    audio.volume = clamp(volume, 0, 1);
-    audio.play().catch(() => {
-      // Ignore missing-file or autoplay errors.
-    });
-  }
+    let channel = pool.find(audio => audio.paused || audio.ended);
+    if (!channel) {
+      channel = pool[0];
+      channel.currentTime = 0;
+    }
 
-  function markTrackAvailable(name, isAvailable) {
-    unlocked.set(name, Boolean(isAvailable));
+    channel.volume = clamp(volume, 0, 1);
+    safePlay(channel);
   }
 
   return {
@@ -101,13 +102,39 @@ export function createAudioEngine(trackMap = DEFAULT_TRACKS) {
     setTrack,
     pauseMusic,
     resumeMusic,
+    setMusicEnabled,
     setVolume,
     playSfx,
-    markTrackAvailable,
     isEnabled: () => enabled,
+    isMusicEnabled: () => musicEnabled,
     getCurrentTrack: () => currentTrack,
-    getAvailableTracks: () => Array.from(unlocked.entries())
+    getAvailableTracks: () => Object.keys(trackMap)
   };
+}
+
+function createSfxPool(files, channelsPerSound) {
+  const pool = new Map();
+
+  for (const [name, src] of Object.entries(files)) {
+    const channels = [];
+    for (let i = 0; i < channelsPerSound; i += 1) {
+      const audio = new Audio(src);
+      audio.preload = "auto";
+      channels.push(audio);
+    }
+    pool.set(name, channels);
+  }
+
+  return pool;
+}
+
+function safePlay(audio) {
+  const result = audio.play();
+  if (result && typeof result.catch === "function") {
+    result.catch(() => {
+      // Ignore autoplay and missing-file issues; try again on future interactions.
+    });
+  }
 }
 
 function clamp(value, min, max) {

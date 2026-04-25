@@ -1,4 +1,4 @@
-export function updateHorizontalVelocity(keys, cameraController, velocity, speed) {
+export function updateHorizontalVelocity(input, cameraController, velocity, speed) {
   velocity.x = 0;
   velocity.z = 0;
 
@@ -7,19 +7,19 @@ export function updateHorizontalVelocity(keys, cameraController, velocity, speed
   let moveX = 0;
   let moveZ = 0;
 
-  if (keys.KeyW) {
+  if (isDown(input, "moveForward", "KeyW")) {
     moveX += forwardX;
     moveZ += forwardZ;
   }
-  if (keys.KeyS) {
+  if (isDown(input, "moveBackward", "KeyS")) {
     moveX -= forwardX;
     moveZ -= forwardZ;
   }
-  if (keys.KeyA) {
+  if (isDown(input, "moveLeft", "KeyA")) {
     moveX -= rightX;
     moveZ -= rightZ;
   }
-  if (keys.KeyD) {
+  if (isDown(input, "moveRight", "KeyD")) {
     moveX += rightX;
     moveZ += rightZ;
   }
@@ -29,4 +29,12 @@ export function updateHorizontalVelocity(keys, cameraController, velocity, speed
     velocity.x = (moveX / moveLength) * speed;
     velocity.z = (moveZ / moveLength) * speed;
   }
+}
+
+function isDown(input, action, fallbackCode) {
+  if (input && typeof input.isActionDown === "function") {
+    return input.isActionDown(action);
+  }
+
+  return Boolean(input?.[fallbackCode]);
 }

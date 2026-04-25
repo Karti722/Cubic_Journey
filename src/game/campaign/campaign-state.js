@@ -1,9 +1,12 @@
 import { GAME_CONFIG, getWorldStageCount } from "../config/game-config.js";
+import { createDefaultSkillState } from "../skills/skill-data.js";
 
 export function createDefaultCampaignSave(worlds) {
   return {
     keyCubes: 0,
     totalCompletedStages: 0,
+    currency: 0,
+    skills: createDefaultSkillState(),
     worldProgress: worlds.map(() => ({
       highestUnlockedStage: 0,
       highestCompletedStage: -1,
@@ -24,6 +27,8 @@ export function createCampaignState(worlds, saveData) {
     finalWin: false,
     keyCubes: saveData.keyCubes,
     totalCompletedStages: saveData.totalCompletedStages,
+    currency: saveData.currency,
+    skills: saveData.skills,
     worldProgress: saveData.worldProgress
   };
 
@@ -99,8 +104,28 @@ export function createCampaignState(worlds, saveData) {
     return {
       keyCubes: state.keyCubes,
       totalCompletedStages: state.totalCompletedStages,
+      currency: state.currency,
+      skills: state.skills,
       worldProgress: state.worldProgress
     };
+  }
+
+  function earnCurrency(amount) {
+    state.currency += Math.max(0, Math.floor(amount));
+  }
+
+  function canAfford(cost) {
+    return state.currency >= cost;
+  }
+
+  function spendCurrency(cost) {
+    if (!canAfford(cost)) return false;
+    state.currency -= cost;
+    return true;
+  }
+
+  function unlockSkill(skillId) {
+    state.skills[skillId] = true;
   }
 
   return {
@@ -109,7 +134,11 @@ export function createCampaignState(worlds, saveData) {
     enterHub,
     enterWorld,
     completeCurrentStage,
-    getSaveData
+    getSaveData,
+    earnCurrency,
+    canAfford,
+    spendCurrency,
+    unlockSkill
   };
 }
 

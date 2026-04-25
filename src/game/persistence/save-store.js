@@ -38,6 +38,13 @@ function mergeState(defaultState, loadedState) {
     Number.MAX_SAFE_INTEGER,
     0
   );
+    merged.currency = clampNumber(loadedState.currency, 0, Number.MAX_SAFE_INTEGER, 0);
+
+    if (loadedState.skills && typeof loadedState.skills === "object") {
+      for (const [skillId, value] of Object.entries(defaultState.skills || {})) {
+        merged.skills[skillId] = Boolean(loadedState.skills[skillId] ?? value);
+      }
+    }
 
   if (Array.isArray(loadedState.worldProgress)) {
     for (let i = 0; i < merged.worldProgress.length; i += 1) {

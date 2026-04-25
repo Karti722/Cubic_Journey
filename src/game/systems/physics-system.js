@@ -23,8 +23,15 @@ export function stepPlayerPhysics({
   fallLimit,
   config,
   input,
-  ability
+  ability,
+  skills = {}
 }) {
+  const jumpHeld = Boolean(input.jumpHeld);
+  const hasWallClimb = Boolean(skills.wallClimb);
+  const hasGlide = Boolean(skills.glide);
+  const hasPlatformMagnet = Boolean(skills.platformMagnet);
+  const hasDashBoost = Boolean(skills.dashBoost);
+
   if (grounded) {
     ability.extraJumpsLeft = config.extraAirJumps;
     ability.dashAvailable = true;
@@ -35,7 +42,7 @@ export function stepPlayerPhysics({
       velocity.y = config.jumpVelocity;
       grounded = false;
     } else if (ability.wallNormal) {
-      velocity.y = config.jumpVelocity * 0.95;
+      velocity.y = config.jumpVelocity * (hasWallClimb ? 1.06 : 0.95);
       velocity.x = ability.wallNormal.x * config.wallJumpPush;
       velocity.z = ability.wallNormal.z * config.wallJumpPush;
       ability.extraJumpsLeft = config.extraAirJumps;
@@ -47,10 +54,17 @@ export function stepPlayerPhysics({
     }
   }
 
+  if (!grounded && hasWallClimb && jumpHeld && ability.wallNormal && velocity.y <= config.jumpVelocity * 0.55) {
+    velocity.y = Math.max(velocity.y, config.jumpVelocity * 0.58);
+    velocity.x = ability.wallNormal.x * (config.wallJumpPush * 0.22);
+    velocity.z = ability.wallNormal.z * (config.wallJumpPush * 0.22);
+  }
+
   if (input.dashPressed && !grounded && ability.dashAvailable) {
     const direction = normalize2D(input.dashDirection.x, input.dashDirection.z);
-    velocity.x = direction.x * config.dashSpeed;
-    velocity.z = direction.z * config.dashSpeed;
+    const dashSpeed = hasDashBoost ? config.dashSpeed * 1.18 : config.dashSpeed;
+    velocity.x = direction.x * dashSpeed;
+    velocity.z = direction.z * dashSpeed;
     velocity.y = Math.max(0, velocity.y);
 
     ability.dashAvailable = false;
@@ -60,7 +74,8 @@ export function stepPlayerPhysics({
   if (ability.dashTimeLeft > 0) {
     ability.dashTimeLeft = Math.max(0, ability.dashTimeLeft - dt);
   } else {
-    velocity.y -= config.gravity * dt;
+    const gravityScale = !grounded && hasGlide && jumpHeld ? 0.48 : 1;
+    velocity.y -= config.gravity * gravityScale * dt;
   }
 
   const previousX = player.position.x;
@@ -113,6 +128,15 @@ export function stepPlayerPhysics({
     }
   }
 
+  if (!grounded && hasPlatformMagnet && velocity.y <= 0) {
+    const magnetResult = magnetToPlatform(player, colliders, config);
+    if (magnetResult.grounded) {
+      grounded = true;
+      velocity.y = 0;
+      wallNormal = null;
+    }
+  }
+
   if (grounded) {
     ability.extraJumpsLeft = config.extraAirJumps;
     ability.dashAvailable = true;
@@ -125,6 +149,27 @@ export function stepPlayerPhysics({
     grounded,
     fell: player.position.y < fallLimit
   };
+}
+
+function magnetToPlatform(player, colliders, config) {
+  const playerBottom = player.position.y - config.halfHeight;
+  const playerTop = player.position.y + config.halfHeight;
+
+  for (const collider of colliders) {
+    const top = collider.y + collider.sy / 2;
+    const horizontalReachX = collider.sx / 2 + config.halfHeight * 0.7;
+    const horizontalReachZ = collider.sz / 2 + config.halfHeight * 0.7;
+    const dx = Math.abs(player.position.x - collider.x);
+    const dz = Math.abs(player.position.z - collider.z);
+
+    if (dx > horizontalReachX || dz > horizontalReachZ) continue;
+    if (playerBottom < top - 1.4 || playerTop > top + 0.4) continue;
+
+    player.position.y = top + config.halfHeight;
+    return { grounded: true };
+  }
+
+  return { grounded: false };
 }
 
 function normalize2D(x, z) {

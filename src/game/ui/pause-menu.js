@@ -1,4 +1,4 @@
-export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld, onResetSave, onToggleMusic }) {
+export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld, onResetSave, onToggleMusic, onOpenControls, onOpenShop }) {
   const root = document.createElement("div");
   root.style.position = "fixed";
   root.style.inset = "0";
@@ -68,6 +68,8 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
     grid.appendChild(makeSection("Progress", [
       `Stages cleared: ${model.completedStages}/${model.totalStages}`,
       `Key Cubes: ${model.keyCubes}/5`,
+      `Coins: ${model.currency}`,
+      `Skills owned: ${model.skillCount}`,
       `Unlocked worlds: ${model.unlockedWorldCount}/${model.worldCount}`,
       `Saved world: ${model.saveSummary}`,
       model.finalWin ? "Campaign complete." : "Keep collecting key cubes to access Core Rift."
@@ -92,6 +94,12 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
     resumeButton.style.color = "white";
 
     addButton(buttonRow, model.musicEnabled ? "Music On" : "Music Off", onToggleMusic);
+    addButton(buttonRow, "Controls", () => {
+      if (typeof onOpenControls === "function") onOpenControls();
+    });
+    addButton(buttonRow, "Shop", () => {
+      if (typeof onOpenShop === "function") onOpenShop();
+    });
     addButton(buttonRow, "Travel to Hub", () => {
       onSelectHub();
       close();

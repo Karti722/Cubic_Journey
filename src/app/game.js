@@ -13,7 +13,8 @@ import {
   collectDashOrbs,
   collectNearby,
   isGoalReached,
-  findNearbyPortal
+  findNearbyPortal,
+  resolveEnemyContacts
 } from "../game/systems/interaction-system.js";
 import { createHud } from "../game/ui/hud.js";
 import { createWorldMenu } from "../game/ui/world-menu.js";
@@ -26,9 +27,15 @@ export function startGame(uiElement) {
   const { scene, camera, renderer, clock } = createRenderContext();
   attachResize(camera, renderer);
 
+  const playerMaterial = new THREE.MeshStandardMaterial({
+    color: 0xff5555,
+    emissive: 0x000000,
+    emissiveIntensity: 1
+  });
+
   const player = new THREE.Mesh(
     new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshStandardMaterial({ color: 0xff5555 })
+    playerMaterial
   );
   player.castShadow = true;
   player.position.set(0, 3, 0);
@@ -48,6 +55,7 @@ export function startGame(uiElement) {
   let collectedCoins = 0;
   let paused = false;
   let musicEnabled = true;
+  let damageCooldownUntil = 0;
 
   const velocity = new THREE.Vector3();
   const ability = createAbilityState(PLAYER_CONFIG.extraAirJumps);
@@ -72,6 +80,16 @@ export function startGame(uiElement) {
     resetAbilityState(ability, PLAYER_CONFIG.extraAirJumps);
     grounded = false;
     collectedCoins = 0;
+
+    if (runtime.enemies && runtime.enemies.length > 0) {
+      audio.playSfx("enemy", 0.45);
+    }
+  }
+
+  function triggerDamageFeedback(elapsed) {
+    damageCooldownUntil = elapsed + 0.85;
+    audio.playSfx("damage", 0.82);
+    playerMaterial.emissive.setHex(0xff3311);
   }
 
   function setMusicForCurrentState() {
@@ -331,6 +349,33 @@ export function startGame(uiElement) {
     if (dashOrbCount > 0) {
       ability.dashAvailable = true;
       audio.playSfx("collect", 0.55);
+    }
+
+    const enemyContact = resolveEnemyContacts(player, velocity, runtime.enemies, {
+      contactRadius: 1,
+      stompMinFallSpeed: -1.6,
+      stompHeightBias: 0.22,
+      stompBounceSpeed: Math.max(PLAYER_CONFIG.jumpVelocity * 0.95, 7.8)
+    });
+
+    if (enemyContact.defeated > 0) {
+      audio.playSfx("enemyDefeat", 0.78);
+      grounded = false;
+    }
+
+    if (enemyContact.playerHit && elapsed >= damageCooldownUntil) {
+      triggerDamageFeedback(elapsed);
+      player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
+      velocity.set(0, 0, 0);
+      resetAbilityState(ability, PLAYER_CONFIG.extraAirJumps);
+      grounded = false;
+    }
+
+    if (elapsed >= damageCooldownUntil) {
+      playerMaterial.emissive.setHex(0x000000);
+    } else {
+      const pulse = (Math.sin(elapsed * 30) + 1) / 2;
+      playerMaterial.emissive.setHex(pulse > 0.5 ? 0xff6633 : 0x441100);
     }
 
     if (physics.fell) {

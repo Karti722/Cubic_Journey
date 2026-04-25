@@ -56,3 +56,38 @@ export function findNearbyPortal(player, portals, radius) {
   }
   return null;
 }
+
+export function resolveEnemyContacts(player, velocity, enemies, options = {}) {
+  const contactRadius = options.contactRadius ?? 1.05;
+  const stompMinFallSpeed = options.stompMinFallSpeed ?? -1.8;
+  const stompHeightBias = options.stompHeightBias ?? 0.18;
+  const stompBounceSpeed = options.stompBounceSpeed ?? 8;
+
+  let defeated = 0;
+  let playerHit = false;
+
+  for (const enemy of enemies || []) {
+    if (enemy.defeated || !enemy.mesh.visible) continue;
+
+    const radius = enemy.radius || 0.6;
+    const distance = player.position.distanceTo(enemy.mesh.position);
+    if (distance > contactRadius + radius) continue;
+
+    const playerBottom = player.position.y - 0.5;
+    const enemyTop = enemy.mesh.position.y + radius;
+    const fromAbove = playerBottom >= enemyTop - stompHeightBias;
+    const descendingFastEnough = velocity.y <= stompMinFallSpeed;
+
+    if (fromAbove && descendingFastEnough) {
+      enemy.defeated = true;
+      enemy.mesh.visible = false;
+      velocity.y = Math.max(velocity.y, stompBounceSpeed);
+      defeated += 1;
+    } else {
+      playerHit = true;
+      break;
+    }
+  }
+
+  return { defeated, playerHit };
+}

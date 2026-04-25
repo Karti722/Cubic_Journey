@@ -55,7 +55,7 @@ export function createStageDefinition(worldIndex, stageIndex) {
   const isBossStage = world.hasBoss && stageIndex === worldStageCount - 1;
 
   if (isBossStage) {
-    return createBossStage(world, stageIndex, worldStageCount);
+    return createBossStage(world, worldIndex, stageIndex, worldStageCount);
   }
 
   const levelNumber = stageIndex + 1;
@@ -64,11 +64,14 @@ export function createStageDefinition(worldIndex, stageIndex) {
 
   const templateId = (worldIndex * 17 + stageIndex * 13) % 12;
   const segmentCount = 18;
+  const worldDifficulty = getWorldDifficulty(worldIndex, stageIndex, worldStageCount);
+  const maxStandardEnemies = 1 + Math.floor(worldDifficulty * 3.5);
 
   const platforms = [{ x: 0, y: 0, z: 0, sx: 10, sy: 1, sz: 10, color: world.baseColor }];
   const collectibles = [];
   const jumpPads = [];
   const dashOrbs = [];
+  const enemies = [];
 
   let x = 0;
   let y = 0;
@@ -102,6 +105,20 @@ export function createStageDefinition(worldIndex, stageIndex) {
       dashOrbs.push({ x, y: y + 1.7, z });
     }
 
+    if (
+      enemies.length < maxStandardEnemies
+      && shouldSpawnStandardEnemy(i, templateId, rng, worldDifficulty, stageIndex)
+    ) {
+      const radius = 0.56 + worldDifficulty * 0.2 + rng() * 0.06;
+      enemies.push({
+        x,
+        y: y + 1.0 + worldDifficulty * 0.18,
+        z: z + (rng() - 0.5) * 0.9,
+        radius,
+        phase: rng() * Math.PI * 2
+      });
+    }
+
     if ((i + templateId) % 5 === 1) {
       const wallHeight = 3 + ((i + worldIndex) % 4);
       const wallOffset = ((templateId % 2) * 2 - 1) * (1.3 + rng() * 0.8);
@@ -129,14 +146,18 @@ export function createStageDefinition(worldIndex, stageIndex) {
     collectibles,
     jumpPads,
     dashOrbs,
+    enemies,
     goal,
     isBossStage: false,
     stageType: "standard"
   };
 }
 
-function createBossStage(world, stageIndex, worldStageCount) {
+function createBossStage(world, worldIndex, stageIndex, worldStageCount) {
   const arenaColor = (world.baseColor + 0x0f0f0f) & 0xffffff;
+  const worldDifficulty = worldIndex / Math.max(1, GAME_CONFIG.campaignWorlds.length - 1);
+  const bossSeed = (worldIndex + 1) * 50177 + (stageIndex + 1) * 997;
+  const rng = createRng(bossSeed);
 
   const platforms = [
     { x: 0, y: 0, z: 0, sx: 22, sy: 1, sz: 22, color: arenaColor },
@@ -164,6 +185,24 @@ function createBossStage(world, stageIndex, worldStageCount) {
     { x: 5, y: 2, z: 0, value: 2 }
   ];
 
+  const enemyAnchors = [
+    { x: -6, y: 1.05, z: 0 },
+    { x: 6, y: 1.05, z: 0 },
+    { x: 0, y: 5.05, z: -6 },
+    { x: -8, y: 3.95, z: -8 },
+    { x: 8, y: 5.95, z: -8 },
+    { x: 0, y: 10.9, z: 0 }
+  ];
+
+  const bossEnemyCount = 3 + Math.floor(worldDifficulty * 3);
+  const enemies = enemyAnchors.slice(0, bossEnemyCount).map((anchor, index) => ({
+    x: anchor.x,
+    y: anchor.y,
+    z: anchor.z,
+    radius: 0.68 + worldDifficulty * 0.16 + index * 0.015,
+    phase: rng() * Math.PI * 2
+  }));
+
   const goal = { x: 0, y: 14.5, z: 0, color: world.keyCubeReward ? 0xfff066 : 0xff6688 };
 
   return {
@@ -176,6 +215,7 @@ function createBossStage(world, stageIndex, worldStageCount) {
     collectibles,
     jumpPads,
     dashOrbs,
+    enemies,
     goal,
     isBossStage: true,
     stageType: "boss",
@@ -214,4 +254,18 @@ function computeHeightShift(templateId, i, rng) {
     default:
       return wobble;
   }
+}
+
+function getWorldDifficulty(worldIndex, stageIndex, worldStageCount) {
+  const worldRatio = worldIndex / Math.max(1, GAME_CONFIG.campaignWorlds.length - 1);
+  const stageRatio = stageIndex / Math.max(1, worldStageCount - 1);
+  return Math.min(1, worldRatio * 0.7 + stageRatio * 0.3);
+}
+
+function shouldSpawnStandardEnemy(i, templateId, rng, worldDifficulty, stageIndex) {
+  if (i <= 2) return false;
+
+  const rhythmGate = ((i + templateId + stageIndex) % 5) <= 1;
+  const chance = 0.2 + worldDifficulty * 0.55;
+  return rhythmGate && rng() < chance;
 }

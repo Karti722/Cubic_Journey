@@ -49,7 +49,7 @@ http://127.0.0.1:8123
 - The project uses JavaScript ES modules.
 - Use serve.py instead of python -m http.server on systems where .js is served with an incorrect MIME type.
 - This is a pure static game (no backend, no build step required).
-- Audio files are expected later in assets/audio/.
+- Audio files are expected later in src/game/audio/.
 
 ## Audio And Music
 
@@ -57,21 +57,24 @@ The game now includes an audio engine that is ready for MP3 files when you add t
 
 Expected music and sound paths:
 
-- assets/audio/hub.mp3
-- assets/audio/meadow.mp3
-- assets/audio/canyon.mp3
-- assets/audio/nebula.mp3
-- assets/audio/obsidian.mp3
-- assets/audio/aurora.mp3
-- assets/audio/core.mp3
-- assets/audio/boss.mp3
-- assets/audio/sfx-jump.mp3
-- assets/audio/sfx-dash.mp3
-- assets/audio/sfx-collect.mp3
-- assets/audio/sfx-portal.mp3
-- assets/audio/sfx-key.mp3
-- assets/audio/sfx-boss.mp3
-- assets/audio/sfx-pause.mp3
+- src/game/audio/music/hub.mp3
+- src/game/audio/music/meadow.mp3
+- src/game/audio/music/canyon.mp3
+- src/game/audio/music/nebula.mp3
+- src/game/audio/music/obsidian.mp3
+- src/game/audio/music/aurora.mp3
+- src/game/audio/music/core.mp3
+- src/game/audio/music/boss.mp3
+- src/game/audio/sfx/jump.mp3
+- src/game/audio/sfx/dash.mp3
+- src/game/audio/sfx/collect.mp3
+- src/game/audio/sfx/portal.mp3
+- src/game/audio/sfx/key.mp3
+- src/game/audio/sfx/boss.mp3
+- src/game/audio/sfx/enemy.mp3
+- src/game/audio/sfx/enemy-defeat.mp3
+- src/game/audio/sfx/damage.mp3
+- src/game/audio/sfx/pause.mp3
 
 Suggested stock music sources once you are ready:
 
@@ -109,6 +112,7 @@ Tip: for a platformer, look for looping ambient tracks for the hub and slower ex
 
 - This is a static site, so no build step is required.
 - If you later add a bundler (like Vite), update Build command and Publish directory accordingly.
+- The included netlify.toml file keeps the project deployable as a plain static site.
 
 ## Project Structure
 
@@ -129,6 +133,7 @@ Tip: for a platformer, look for looping ambient tracks for the hub and slower ex
 - src/game/ui/hud.js: Dynamic HUD rendering
 - src/game/ui/pause-menu.js: Detailed pause menu, controls, and world switching
 - src/game/audio/audio-engine.js: Background music and sound effect management
+- netlify.toml: Static deploy config for Netlify
 - src/game/story/story-data.js: Story and boss names
 - src/game/persistence/save-store.js: localStorage save/load helpers
 - serve.py: Local static server with JS MIME fix

@@ -1,55 +1,118 @@
-export function createCampaignState(worlds) {
-  const totalLevels = worlds.reduce((sum, world) => sum + world.levelCount, 0);
+import { GAME_CONFIG, getWorldStageCount } from "../config/game-config.js";
+
+export function createDefaultCampaignSave(worlds) {
+  return {
+    keyCubes: 0,
+    totalCompletedStages: 0,
+    worldProgress: worlds.map(() => ({
+      highestUnlockedStage: 0,
+      highestCompletedStage: -1,
+      bossDefeated: false,
+      keyCubeClaimed: false
+    }))
+  };
+}
+
+export function createCampaignState(worlds, saveData) {
+  const totalStages = worlds.reduce((sum, world) => sum + getWorldStageCount(world), 0);
 
   const state = {
     mode: "hub",
     worldIndex: 0,
-    levelIndex: 0,
-    unlockedWorldIndex: 0,
-    completedLevels: 0,
-    totalLevels,
-    finalWin: false
+    stageIndex: 0,
+    totalStages,
+    finalWin: false,
+    keyCubes: saveData.keyCubes,
+    totalCompletedStages: saveData.totalCompletedStages,
+    worldProgress: saveData.worldProgress
   };
+
+  function canAccessWorld(worldIndex) {
+    if (worldIndex !== GAME_CONFIG.finalWorldIndex) return true;
+    return state.keyCubes >= GAME_CONFIG.requiredKeyCubes;
+  }
 
   function enterHub() {
     state.mode = "hub";
     state.worldIndex = 0;
-    state.levelIndex = 0;
+    state.stageIndex = 0;
   }
 
-  function enterWorld(worldIndex) {
-    if (worldIndex > state.unlockedWorldIndex) return false;
+  function enterWorld(worldIndex, stageIndex) {
+    if (!canAccessWorld(worldIndex)) return false;
+
+    const worldStageCount = getWorldStageCount(worlds[worldIndex]);
+    const highestUnlocked = Math.min(state.worldProgress[worldIndex].highestUnlockedStage, worldStageCount - 1);
+    const targetStage = clamp(stageIndex ?? highestUnlocked, 0, highestUnlocked);
+
     state.mode = "level";
     state.worldIndex = worldIndex;
-    state.levelIndex = 0;
+    state.stageIndex = targetStage;
     return true;
   }
 
-  function completeCurrentLevel() {
-    if (state.mode !== "level") return;
-
-    state.completedLevels += 1;
+  function completeCurrentStage() {
+    if (state.mode !== "level") return { transition: "none" };
 
     const world = worlds[state.worldIndex];
-    if (state.levelIndex < world.levelCount - 1) {
-      state.levelIndex += 1;
-      return;
+    const worldStageCount = getWorldStageCount(world);
+    const progress = state.worldProgress[state.worldIndex];
+    const currentStage = state.stageIndex;
+    const isBossStage = world.hasBoss && currentStage === worldStageCount - 1;
+    const completedWorldIndex = state.worldIndex;
+    let awardedKeyCube = false;
+
+    if (currentStage > progress.highestCompletedStage) {
+      progress.highestCompletedStage = currentStage;
+      state.totalCompletedStages += 1;
     }
 
-    if (state.worldIndex < worlds.length - 1) {
-      state.unlockedWorldIndex = Math.max(state.unlockedWorldIndex, state.worldIndex + 1);
+    if (currentStage < worldStageCount - 1) {
+      progress.highestUnlockedStage = Math.max(progress.highestUnlockedStage, currentStage + 1);
+      state.stageIndex = Math.min(currentStage + 1, progress.highestUnlockedStage);
+    } else {
       enterHub();
-      return;
     }
 
-    state.finalWin = true;
-    enterHub();
+    if (isBossStage) {
+      progress.bossDefeated = true;
+
+      if (world.keyCubeReward && !progress.keyCubeClaimed) {
+        progress.keyCubeClaimed = true;
+        state.keyCubes = Math.min(state.keyCubes + 1, GAME_CONFIG.requiredKeyCubes);
+        awardedKeyCube = true;
+      }
+
+      if (completedWorldIndex === GAME_CONFIG.finalWorldIndex) {
+        state.finalWin = true;
+      }
+    }
+
+    return {
+      transition: state.mode === "hub" ? "hub" : "next-stage",
+      isBossStage,
+      awardedKeyCube
+    };
+  }
+
+  function getSaveData() {
+    return {
+      keyCubes: state.keyCubes,
+      totalCompletedStages: state.totalCompletedStages,
+      worldProgress: state.worldProgress
+    };
   }
 
   return {
     state,
+    canAccessWorld,
     enterHub,
     enterWorld,
-    completeCurrentLevel
+    completeCurrentStage,
+    getSaveData
   };
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }

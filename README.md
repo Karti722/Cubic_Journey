@@ -36,15 +36,54 @@ http://127.0.0.1:8123
 
 - W A S D: Move (camera-relative)
 - Space: Jump
+- Shift: Air dash
+- Jump into nearby walls: Wall jump
 - Mouse drag: Rotate camera
 - Arrow keys: Rotate / tilt camera
 - E: Enter nearby portal in the hub
+- M: Open the quick world menu
+- P / Esc: Pause the game and open the detailed menu
 
 ## Notes
 
 - The project uses JavaScript ES modules.
 - Use serve.py instead of python -m http.server on systems where .js is served with an incorrect MIME type.
 - This is a pure static game (no backend, no build step required).
+- Audio files are expected later in assets/audio/.
+
+## Audio And Music
+
+The game now includes an audio engine that is ready for MP3 files when you add them later.
+
+Expected music and sound paths:
+
+- assets/audio/hub.mp3
+- assets/audio/meadow.mp3
+- assets/audio/canyon.mp3
+- assets/audio/nebula.mp3
+- assets/audio/obsidian.mp3
+- assets/audio/aurora.mp3
+- assets/audio/core.mp3
+- assets/audio/boss.mp3
+- assets/audio/sfx-jump.mp3
+- assets/audio/sfx-dash.mp3
+- assets/audio/sfx-collect.mp3
+- assets/audio/sfx-portal.mp3
+- assets/audio/sfx-key.mp3
+- assets/audio/sfx-boss.mp3
+- assets/audio/sfx-pause.mp3
+
+Suggested stock music sources once you are ready:
+
+- YouTube Audio Library: free, easy to search, good for game loops
+- Pixabay Music: broad royalty-free catalog
+- Uppbeat: modern tracks with clear licensing tiers
+- Free Music Archive: large library, but check the license on each track
+- Incompetech: classic royalty-free catalog by Kevin MacLeod
+- FreePD: public-domain music and effects
+- Mixkit: short cinematic and ambient tracks, plus SFX
+
+Tip: for a platformer, look for looping ambient tracks for the hub and slower exploratory worlds, plus a more intense battle loop for bosses.
 
 ## Deploy On Netlify
 
@@ -88,4 +127,8 @@ http://127.0.0.1:8123
 - src/game/systems/physics-system.js: Gravity, jump, grounded collision, fall reset
 - src/game/systems/interaction-system.js: Goal/collectible/portal interactions
 - src/game/ui/hud.js: Dynamic HUD rendering
+- src/game/ui/pause-menu.js: Detailed pause menu, controls, and world switching
+- src/game/audio/audio-engine.js: Background music and sound effect management
+- src/game/story/story-data.js: Story and boss names
+- src/game/persistence/save-store.js: localStorage save/load helpers
 - serve.py: Local static server with JS MIME fix

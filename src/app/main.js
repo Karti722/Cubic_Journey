@@ -1,4 +1,4 @@
-import { startGame } from "./game.js";
+import { startGame } from "./game.js?v=3";
 
 const uiElement = document.getElementById("ui");
 if (!uiElement) {

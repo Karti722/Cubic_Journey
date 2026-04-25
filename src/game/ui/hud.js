@@ -2,19 +2,23 @@ export function createHud(uiElement) {
   function update(model) {
     const lines = [];
 
-    lines.push("WASD move  |  Space jump  |  Mouse drag / Arrow keys camera");
+    lines.push("WASD move | Space jump/double jump | Shift air dash | Wall jump on contact");
+    lines.push("Mouse drag / Arrow keys camera | M world menu | H return to hub");
 
     if (model.mode === "hub") {
-      lines.push(`Hub World  |  Progress: ${model.completedLevels}/${model.totalLevels}`);
-      lines.push("Walk into a portal and press E to enter that world");
-      lines.push(`Unlocked worlds: ${model.unlockedWorldIndex + 1}/${model.worldCount}`);
+      lines.push(`Hub World | Story: ${model.storyLine}`);
+      lines.push(`Progress: ${model.completedStages}/${model.totalStages} stages`);
+      lines.push(`Key Cubes: ${model.keyCubes}/5`);
+      lines.push("Walk into a portal and press E, or use the world menu (M)");
       if (model.portalPrompt) lines.push(model.portalPrompt);
       if (model.finalWin) lines.push("Campaign complete! You cleared every stage.");
     } else {
-      lines.push(`${model.worldName}  |  Stage ${model.levelNumber}/${model.levelCount}`);
-      lines.push(`Total progress: ${model.completedLevels}/${model.totalLevels}`);
-      lines.push(`Collectibles: ${model.collectedCoins}`);
-      lines.push("Reach the glowing green cube");
+      lines.push(`${model.worldName} | Stage ${model.stageNumber}/${model.stageCount}`);
+      lines.push(`Story: ${model.storyLine}`);
+      lines.push(`Total progress: ${model.completedStages}/${model.totalStages}`);
+      lines.push(`Collectibles: ${model.collectedCoins} | Key Cubes: ${model.keyCubes}/5`);
+      lines.push(model.isBossStage ? "Boss Stage: claim the key cube core" : "Reach the stage goal cube");
+      if (model.bossName) lines.push(`Boss: ${model.bossName}`);
     }
 
     uiElement.innerHTML = lines.join("<br>");

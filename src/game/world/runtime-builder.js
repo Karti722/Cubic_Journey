@@ -8,6 +8,8 @@ export function buildWorldRuntime(scene, definition) {
 
   const colliders = [];
   const collectibles = [];
+  const jumpPads = [];
+  const dashOrbs = [];
   const portals = [];
 
   for (const platform of definition.platforms) {
@@ -40,6 +42,26 @@ export function buildWorldRuntime(scene, definition) {
     collectibles.push({ mesh, collected: false, value: item.value || 1 });
   }
 
+  for (const pad of definition.jumpPads || []) {
+    const mesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.8, 0.8, 0.35, 16),
+      new THREE.MeshStandardMaterial({ color: 0x33ff99, emissive: 0x114422 })
+    );
+    mesh.position.set(pad.x, pad.y, pad.z);
+    root.add(mesh);
+    jumpPads.push({ mesh, power: pad.power || 1, cooldownUntil: 0 });
+  }
+
+  for (const orb of definition.dashOrbs || []) {
+    const mesh = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.45, 0),
+      new THREE.MeshStandardMaterial({ color: 0x6ad7ff, emissive: 0x1b4c7a })
+    );
+    mesh.position.set(orb.x, orb.y, orb.z);
+    root.add(mesh);
+    dashOrbs.push({ mesh, collected: false });
+  }
+
   let goal = null;
   if (definition.goal) {
     goal = new THREE.Mesh(
@@ -49,6 +71,15 @@ export function buildWorldRuntime(scene, definition) {
     goal.position.set(definition.goal.x, definition.goal.y, definition.goal.z);
     goal.castShadow = true;
     root.add(goal);
+
+    if (definition.isBossStage) {
+      const base = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.4, 1.8, 0.6, 18),
+        new THREE.MeshStandardMaterial({ color: 0x111111 })
+      );
+      base.position.set(definition.goal.x, definition.goal.y - 1.2, definition.goal.z);
+      root.add(base);
+    }
   }
 
   for (const portal of definition.portals) {
@@ -82,6 +113,16 @@ export function buildWorldRuntime(scene, definition) {
       coin.mesh.position.y += Math.sin(elapsed * 3 + coin.mesh.position.x) * 0.002;
     }
 
+    for (const pad of jumpPads) {
+      pad.mesh.rotation.y += dt * 1.5;
+    }
+
+    for (const dash of dashOrbs) {
+      if (dash.collected) continue;
+      dash.mesh.rotation.y += dt * 2.8;
+      dash.mesh.position.y += Math.sin(elapsed * 3.2 + dash.mesh.position.x) * 0.0025;
+    }
+
     for (const portal of portals) {
       portal.ring.rotation.z += dt * 1.8;
       portal.orb.position.y += Math.sin(elapsed * 2 + portal.worldIndex) * 0.003;
@@ -105,8 +146,12 @@ export function buildWorldRuntime(scene, definition) {
     type: definition.type,
     name: definition.name,
     spawn: definition.spawn,
+    stageType: definition.stageType,
+    isBossStage: definition.isBossStage,
     colliders,
     collectibles,
+    jumpPads,
+    dashOrbs,
     portals,
     goal,
     update,

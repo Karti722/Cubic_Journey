@@ -132,3 +132,6 @@ Tip: for a platformer, look for looping ambient tracks for the hub and slower ex
 - src/game/story/story-data.js: Story and boss names
 - src/game/persistence/save-store.js: localStorage save/load helpers
 - serve.py: Local static server with JS MIME fix
+
+# Music
+- From Pixabay

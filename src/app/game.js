@@ -186,15 +186,24 @@ export function startGame(uiElement) {
       })
     }),
     onResume: () => {
+      audio.playSfx("pause", 0.55);
       paused = false;
       pauseMenu.close();
-      audio.resumeMusic();
+      if (musicEnabled) audio.resumeMusic();
     },
     onSelectHub: () => {
+      audio.playSfx("portal", 0.6);
+      paused = false;
+      pauseMenu.close();
       travelToHub();
+      if (musicEnabled) audio.resumeMusic();
     },
     onSelectWorld: (worldIndex, stageIndex) => {
+      audio.playSfx("portal", 0.6);
+      paused = false;
+      pauseMenu.close();
       travelToWorld(worldIndex, stageIndex);
+      if (musicEnabled) audio.resumeMusic();
     },
     onResetSave: () => {
       clearSave();
@@ -202,11 +211,8 @@ export function startGame(uiElement) {
     },
     onToggleMusic: () => {
       musicEnabled = !musicEnabled;
-      if (musicEnabled) {
-        audio.resumeMusic();
-      } else {
-        audio.pauseMusic();
-      }
+      audio.setMusicEnabled(musicEnabled);
+      audio.playSfx("pause", 0.45);
       pauseMenu.render();
     }
   });
@@ -248,10 +254,12 @@ export function startGame(uiElement) {
       if (paused) {
         worldMenu.close();
         pauseMenu.open();
+        audio.playSfx("pause", 0.6);
         audio.pauseMusic();
       } else {
+        audio.playSfx("pause", 0.5);
         pauseMenu.close();
-        audio.resumeMusic();
+        if (musicEnabled) audio.resumeMusic();
       }
     }
 

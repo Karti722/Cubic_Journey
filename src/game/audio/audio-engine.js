@@ -1,22 +1,22 @@
 const DEFAULT_TRACKS = {
-  hub: "src/game/audio/hub.mp3",
-  meadow: "src/game/audio/meadow.mp3",
-  canyon: "src/game/audio/canyon.mp3",
-  nebula: "src/game/audio/nebula.mp3",
-  obsidian: "src/game/audio/obsidian.mp3",
-  aurora: "src/game/audio/aurora.mp3",
-  core: "src/game/audio/core.mp3",
-  boss: "src/game/audio/boss.mp3"
+  hub: "src/game/audio/music/hub.mp3",
+  meadow: "src/game/audio/music/meadow.mp3",
+  canyon: "src/game/audio/music/canyon.mp3",
+  nebula: "src/game/audio/music/nebula.mp3",
+  obsidian: "src/game/audio/music/obsidian.mp3",
+  aurora: "src/game/audio/music/aurora.mp3",
+  core: "src/game/audio/music/core.mp3",
+  boss: "src/game/audio/music/boss.mp3"
 };
 
 const SFX_FILES = {
-  jump: "src/game/audio/sfx-jump.mp3",
-  dash: "src/game/audio/sfx-dash.mp3",
-  collect: "src/game/audio/sfx-collect.mp3",
-  portal: "src/game/audio/sfx-portal.mp3",
-  key: "src/game/audio/sfx-key.mp3",
-  boss: "src/game/audio/sfx-boss.mp3",
-  pause: "src/game/audio/sfx-pause.mp3"
+  jump: "src/game/audio/sfx/jump.mp3",
+  dash: "src/game/audio/sfx/dash.mp3",
+  collect: "src/game/audio/sfx/collect.mp3",
+  portal: "src/game/audio/sfx/portal.mp3",
+  key: "src/game/audio/sfx/key.mp3",
+  boss: "src/game/audio/sfx/boss.mp3",
+  pause: "src/game/audio/sfx/pause.mp3"
 };
 
 export function createAudioEngine(trackMap = DEFAULT_TRACKS) {

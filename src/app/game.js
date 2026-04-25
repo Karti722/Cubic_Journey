@@ -18,6 +18,7 @@ import {
 import { createHud } from "../game/ui/hud.js";
 import { createWorldMenu } from "../game/ui/world-menu.js";
 import { createPauseMenu } from "../game/ui/pause-menu.js";
+import { createDebugMenu } from "../game/debug/debug-menu.js";
 import { STORY } from "../game/story/story-data.js";
 import { clearSave, loadSave, writeSave } from "../game/persistence/save-store.js";
 import { createAudioEngine } from "../game/audio/audio-engine.js";
@@ -122,6 +123,24 @@ export function startGame(uiElement) {
     return true;
   }
 
+  function debugTravelToWorld(worldIndex, stageIndex) {
+    const world = GAME_CONFIG.campaignWorlds[worldIndex];
+    if (!world) return false;
+
+    const totalStages = getWorldStageCount(world);
+    const targetStage = Math.max(0, Math.min(stageIndex ?? 0, totalStages - 1));
+
+    campaign.state.mode = "level";
+    campaign.state.worldIndex = worldIndex;
+    campaign.state.stageIndex = targetStage;
+
+    loadCurrentStage();
+    persistProgress();
+    worldMenu.render();
+    pauseMenu.render();
+    return true;
+  }
+
   const worldMenu = createWorldMenu({
     getModel: () => ({
       keyCubes: campaign.state.keyCubes,
@@ -217,6 +236,37 @@ export function startGame(uiElement) {
     }
   });
 
+  const debugMenu = createDebugMenu({
+    getModel: () => ({
+      currentLabel: campaign.state.mode === "hub"
+        ? "Hub"
+        : `${GAME_CONFIG.campaignWorlds[campaign.state.worldIndex]?.name || "Unknown"} - Stage ${campaign.state.stageIndex + 1}`,
+      worlds: GAME_CONFIG.campaignWorlds.map((world, index) => {
+        const stageCount = getWorldStageCount(world);
+        return {
+          index,
+          name: world.name,
+          stageCount,
+          bossStage: stageCount - 1
+        };
+      })
+    }),
+    onClose: () => {
+      paused = false;
+      if (musicEnabled) audio.resumeMusic();
+    },
+    onTravelHub: () => {
+      paused = false;
+      travelToHub();
+      if (musicEnabled) audio.resumeMusic();
+    },
+    onTravelWorld: (worldIndex, stageIndex) => {
+      paused = false;
+      debugTravelToWorld(worldIndex, stageIndex);
+      if (musicEnabled) audio.resumeMusic();
+    }
+  });
+
   function unlockAudio() {
     audio.unlock();
     setMusicForCurrentState();
@@ -230,6 +280,7 @@ export function startGame(uiElement) {
   loadHub();
   worldMenu.render();
   pauseMenu.render();
+  debugMenu.render();
 
   function getDashDirection() {
     const speed = Math.hypot(velocity.x, velocity.z);
@@ -253,12 +304,27 @@ export function startGame(uiElement) {
       paused = !paused;
       if (paused) {
         worldMenu.close();
+        debugMenu.close();
         pauseMenu.open();
         audio.playSfx("pause", 0.6);
         audio.pauseMusic();
       } else {
         audio.playSfx("pause", 0.5);
         pauseMenu.close();
+        if (musicEnabled) audio.resumeMusic();
+      }
+    }
+
+    if (isKeyPressedOnce("F10") || isKeyPressedOnce("Backquote")) {
+      if (!debugMenu.isOpen()) {
+        paused = true;
+        worldMenu.close();
+        pauseMenu.close();
+        debugMenu.open();
+        audio.pauseMusic();
+      } else {
+        debugMenu.close();
+        paused = false;
         if (musicEnabled) audio.resumeMusic();
       }
     }

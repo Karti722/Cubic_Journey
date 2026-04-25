@@ -1,107 +1,162 @@
 import { THREE } from "../engine/three.js";
+import { createRenderContext, attachResize } from "../engine/core/render-context.js";
 import { createCameraController } from "../engine/camera/camera-controller.js";
 import { createInput } from "../engine/input/input.js";
-import { createWorld, intersectsPlatform } from "../game/world/world.js";
+import { GAME_CONFIG, PLAYER_CONFIG } from "../game/config/game-config.js";
+import { createCampaignState } from "../game/campaign/campaign-state.js";
+import { createHubDefinition, createLevelDefinition } from "../game/world/level-generator.js";
+import { buildWorldRuntime } from "../game/world/runtime-builder.js";
+import { updateHorizontalVelocity } from "../game/systems/movement-system.js";
+import { stepPlayerPhysics } from "../game/systems/physics-system.js";
+import { collectNearby, isGoalReached, findNearbyPortal } from "../game/systems/interaction-system.js";
+import { createHud } from "../game/ui/hud.js";
 
 export function startGame(uiElement) {
-  const scene = new THREE.Scene();
+  const { scene, camera, renderer, clock } = createRenderContext();
+  attachResize(camera, renderer);
 
-  const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 1000);
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(innerWidth, innerHeight);
-  document.body.appendChild(renderer.domElement);
-
-  const { player, platforms, goal } = createWorld(scene);
+  const player = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshStandardMaterial({ color: 0xff5555 })
+  );
+  player.castShadow = true;
+  player.position.set(0, 3, 0);
+  scene.add(player);
 
   const cameraController = createCameraController(camera, player);
   const { keys } = createInput(renderer.domElement, cameraController.rotateByMouse);
+  const hud = createHud(uiElement);
+
+  const campaign = createCampaignState(GAME_CONFIG.campaignWorlds);
+
+  let runtime = null;
+  let grounded = false;
+  let collectedCoins = 0;
 
   const velocity = new THREE.Vector3();
-  let grounded = false;
-  let won = false;
+  const keyLatch = {};
 
-  const clock = new THREE.Clock();
+  function isKeyPressedOnce(code) {
+    if (keys[code]) {
+      if (keyLatch[code]) return false;
+      keyLatch[code] = true;
+      return true;
+    }
+
+    keyLatch[code] = false;
+    return false;
+  }
+
+  function loadDefinition(definition) {
+    if (runtime) runtime.dispose();
+    runtime = buildWorldRuntime(scene, definition);
+    player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
+    velocity.set(0, 0, 0);
+    grounded = false;
+    collectedCoins = 0;
+  }
+
+  function loadHub() {
+    const definition = createHubDefinition(campaign.state);
+    loadDefinition(definition);
+  }
+
+  function loadCurrentLevel() {
+    const definition = createLevelDefinition(campaign.state.worldIndex, campaign.state.levelIndex);
+    loadDefinition(definition);
+  }
+
+  loadHub();
 
   function animate() {
     requestAnimationFrame(animate);
-    const dt = Math.min(clock.getDelta(), 0.033);
 
-    updateMovement(keys, cameraController, velocity);
+    const dt = Math.min(clock.getDelta(), 0.033);
+    const elapsed = clock.elapsedTime;
+
+    if (!runtime) return;
+
+    updateHorizontalVelocity(keys, cameraController, velocity, PLAYER_CONFIG.speed);
     cameraController.updateFromKeys(keys, dt);
 
-    if (grounded && keys.Space) {
-      velocity.y = 12;
+    const physics = stepPlayerPhysics({
+      player,
+      velocity,
+      colliders: runtime.colliders,
+      dt,
+      gravity: PLAYER_CONFIG.gravity,
+      jumpVelocity: PLAYER_CONFIG.jumpVelocity,
+      halfHeight: PLAYER_CONFIG.halfHeight,
+      jumpPressed: keys.Space,
+      grounded,
+      fallLimit: PLAYER_CONFIG.fallLimit
+    });
+
+    grounded = physics.grounded;
+
+    if (physics.fell) {
+      player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
+      velocity.set(0, 0, 0);
       grounded = false;
     }
 
-    velocity.y -= 25 * dt;
-    player.position.addScaledVector(velocity, dt);
-
-    grounded = false;
-    for (const platform of platforms) {
-      if (intersectsPlatform(player, platform) && velocity.y <= 0) {
-        player.position.y = platform.position.y + 1;
-        velocity.y = 0;
-        grounded = true;
-      }
+    if (Math.hypot(velocity.x, velocity.z) > 0.01) {
+      player.rotation.y = Math.atan2(velocity.x, velocity.z);
     }
 
-    if (player.position.y < -10) {
-      player.position.set(0, 3, 0);
-      velocity.set(0, 0, 0);
+    runtime.update(dt, elapsed);
+
+    if (campaign.state.mode === "hub") {
+      const nearbyPortal = findNearbyPortal(player, runtime.portals, GAME_CONFIG.portalRadius);
+      const pressedEnter = isKeyPressedOnce("KeyE");
+
+      if (nearbyPortal && pressedEnter && nearbyPortal.unlocked) {
+        const entered = campaign.enterWorld(nearbyPortal.worldIndex);
+        if (entered) {
+          loadCurrentLevel();
+        }
+      }
+
+      hud.update({
+        mode: "hub",
+        completedLevels: campaign.state.completedLevels,
+        totalLevels: campaign.state.totalLevels,
+        unlockedWorldIndex: campaign.state.unlockedWorldIndex,
+        worldCount: GAME_CONFIG.campaignWorlds.length,
+        portalPrompt: nearbyPortal
+          ? nearbyPortal.unlocked
+            ? `Press E to enter ${nearbyPortal.name}`
+            : `${nearbyPortal.name} is locked`
+          : "",
+        finalWin: campaign.state.finalWin
+      });
+    } else {
+      collectedCoins += collectNearby(player, runtime.collectibles, 1.05);
+
+      if (isGoalReached(player, runtime.goal, 2)) {
+        campaign.completeCurrentLevel();
+        if (campaign.state.mode === "hub") {
+          loadHub();
+        } else {
+          loadCurrentLevel();
+        }
+      }
+
+      const world = GAME_CONFIG.campaignWorlds[campaign.state.worldIndex];
+      hud.update({
+        mode: "level",
+        worldName: world.name,
+        levelNumber: campaign.state.levelIndex + 1,
+        levelCount: world.levelCount,
+        completedLevels: campaign.state.completedLevels,
+        totalLevels: campaign.state.totalLevels,
+        collectedCoins
+      });
     }
 
     cameraController.updateCamera();
-
-    goal.rotation.y += dt * 2;
-
-    if (!won && player.position.distanceTo(goal.position) < 2) {
-      won = true;
-      uiElement.textContent = "You win! Refresh to play again.";
-    }
-
     renderer.render(scene, camera);
   }
 
-  addEventListener("resize", () => {
-    camera.aspect = innerWidth / innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
-  });
-
   animate();
-}
-
-function updateMovement(keys, cameraController, velocity) {
-  const speed = 8;
-  velocity.x = 0;
-  velocity.z = 0;
-
-  const { forwardX, forwardZ, rightX, rightZ } = cameraController.getMoveBasis();
-
-  let moveX = 0;
-  let moveZ = 0;
-
-  if (keys.KeyW) {
-    moveX += forwardX;
-    moveZ += forwardZ;
-  }
-  if (keys.KeyS) {
-    moveX -= forwardX;
-    moveZ -= forwardZ;
-  }
-  if (keys.KeyA) {
-    moveX -= rightX;
-    moveZ -= rightZ;
-  }
-  if (keys.KeyD) {
-    moveX += rightX;
-    moveZ += rightZ;
-  }
-
-  const moveLength = Math.hypot(moveX, moveZ);
-  if (moveLength > 0) {
-    velocity.x = moveX / moveLength * speed;
-    velocity.z = moveZ / moveLength * speed;
-  }
 }

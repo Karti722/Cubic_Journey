@@ -1,6 +1,14 @@
 # Cubic Journey
 
-A small Three.js platformer prototype.
+A long-form Three.js 3D platformer campaign built with modular game systems.
+
+The game now includes:
+
+- A hub world with unlockable portals
+- 4 campaign worlds
+- 76 total stages (16 + 16 + 20 + 24)
+- Camera-relative movement and orbit camera controls
+- Collectibles, progression tracking, and stage-by-stage advancement
 
 ## Requirements
 
@@ -30,11 +38,13 @@ http://127.0.0.1:8123
 - Space: Jump
 - Mouse drag: Rotate camera
 - Arrow keys: Rotate / tilt camera
+- E: Enter nearby portal in the hub
 
 ## Notes
 
 - The project uses JavaScript ES modules.
 - Use serve.py instead of python -m http.server on systems where .js is served with an incorrect MIME type.
+- This is a pure static game (no backend, no build step required).
 
 ## Deploy On Netlify
 
@@ -65,9 +75,17 @@ http://127.0.0.1:8123
 
 - index.html: Page shell and module entry reference
 - src/app/main.js: App bootstrap
-- src/app/game.js: Game loop and core gameplay flow
+- src/app/game.js: High-level game orchestration (hub/level flow, runtime swaps, loop)
 - src/engine/three.js: Three.js CDN re-export
+- src/engine/core/render-context.js: Scene/camera/renderer creation and resize wiring
 - src/engine/input/input.js: Keyboard and mouse input handling
 - src/engine/camera/camera-controller.js: Camera orbit and movement basis
-- src/game/world/world.js: Scene objects and platform collision helper
+- src/game/config/game-config.js: Campaign/world/player tuning
+- src/game/campaign/campaign-state.js: Progression and unlock state machine
+- src/game/world/level-generator.js: Hub and stage generation
+- src/game/world/runtime-builder.js: Build and dispose world meshes/colliders
+- src/game/systems/movement-system.js: Camera-relative horizontal movement
+- src/game/systems/physics-system.js: Gravity, jump, grounded collision, fall reset
+- src/game/systems/interaction-system.js: Goal/collectible/portal interactions
+- src/game/ui/hud.js: Dynamic HUD rendering
 - serve.py: Local static server with JS MIME fix

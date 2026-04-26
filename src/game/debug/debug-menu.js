@@ -1,14 +1,11 @@
+import { ensureUiTheme, styleButton, styleCard, styleHeading, styleOverlayRoot, stylePanel, styleSubtext } from "../ui/ui-theme.js";
+
 export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub, onUnlockAllSkills, onResetSkills, onMaxCurrency }) {
+  ensureUiTheme();
+
   const root = document.createElement("div");
-  root.style.position = "fixed";
-  root.style.inset = "0";
-  root.style.background = "rgba(10, 6, 20, 0.9)";
-  root.style.color = "#f8f6ff";
-  root.style.padding = "24px";
-  root.style.fontFamily = "monospace";
+  styleOverlayRoot(root, { zIndex: 40, background: "radial-gradient(circle at 50% 8%, rgba(255, 122, 202, 0.18), rgba(5, 2, 12, 0.96) 58%), linear-gradient(180deg, rgba(5, 2, 12, 0.84), rgba(0, 0, 0, 0.96))" });
   root.style.display = "none";
-  root.style.zIndex = "40";
-  root.style.overflowY = "auto";
   document.body.appendChild(root);
 
   let isOpen = false;
@@ -18,23 +15,17 @@ export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub,
     root.innerHTML = "";
 
     const panel = document.createElement("div");
-    panel.style.maxWidth = "1120px";
-    panel.style.margin = "0 auto";
-    panel.style.background = "rgba(20, 12, 38, 0.95)";
-    panel.style.border = "1px solid rgba(255, 255, 255, 0.25)";
-    panel.style.padding = "18px";
-    panel.style.boxShadow = "0 20px 50px rgba(0,0,0,0.45)";
+    stylePanel(panel, { maxWidth: "1180px", padding: "22px" });
     root.appendChild(panel);
 
     const title = document.createElement("div");
     title.textContent = "Debug Menu";
-    title.style.fontSize = "28px";
-    title.style.fontWeight = "700";
+    styleHeading(title, { size: "clamp(2rem, 4vw, 3rem)", marginBottom: "8px" });
     panel.appendChild(title);
 
     const subtitle = document.createElement("div");
     subtitle.style.marginTop = "8px";
-    subtitle.style.opacity = "0.85";
+    styleSubtext(subtitle, { marginBottom: "0" });
     subtitle.textContent = `Current: ${model.currentLabel} | Locks: bypassed in this branch`;
     panel.appendChild(subtitle);
 
@@ -60,9 +51,7 @@ export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub,
     if (typeof onUnlockAllSkills === "function" || typeof onResetSkills === "function" || typeof onMaxCurrency === "function") {
       const skillLab = document.createElement("div");
       skillLab.style.marginTop = "18px";
-      skillLab.style.padding = "12px";
-      skillLab.style.border = "1px solid rgba(255,255,255,0.16)";
-      skillLab.style.background = "rgba(255,255,255,0.05)";
+      styleCard(skillLab, { padding: "12px" });
       panel.appendChild(skillLab);
 
       const skillTitle = document.createElement("div");
@@ -99,9 +88,7 @@ export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub,
 
     model.worlds.forEach(world => {
       const card = document.createElement("div");
-      card.style.padding = "12px";
-      card.style.border = "1px solid rgba(255,255,255,0.2)";
-      card.style.background = "rgba(255,255,255,0.06)";
+      styleCard(card, { padding: "12px" });
 
       const worldTitle = document.createElement("div");
       worldTitle.style.fontWeight = "700";
@@ -169,11 +156,7 @@ export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub,
 function addButton(parent, label, onClick) {
   const button = document.createElement("button");
   button.textContent = label;
-  button.style.padding = "8px 12px";
-  button.style.border = "1px solid rgba(255,255,255,0.22)";
-  button.style.color = "#f8f6ff";
-  button.style.background = "#25324a";
-  button.style.cursor = "pointer";
+  styleButton(button, { compact: true });
   button.addEventListener("click", onClick);
   parent.appendChild(button);
   return button;

@@ -1,14 +1,11 @@
+import { ensureUiTheme, styleButton, styleCard, styleHeading, styleOverlayRoot, stylePanel, styleSubtext } from "./ui-theme.js";
+
 export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld, onResetSave, onToggleMusic, onOpenControls, onOpenShop }) {
+  ensureUiTheme();
+
   const root = document.createElement("div");
-  root.style.position = "fixed";
-  root.style.inset = "0";
-  root.style.background = "rgba(0, 0, 0, 0.78)";
-  root.style.color = "white";
-  root.style.padding = "24px";
-  root.style.fontFamily = "sans-serif";
+  styleOverlayRoot(root, { zIndex: 30, background: "radial-gradient(circle at 20% 10%, rgba(102, 164, 255, 0.18), rgba(3, 5, 14, 0.94) 58%), linear-gradient(180deg, rgba(3, 5, 14, 0.84), rgba(0, 0, 0, 0.96))" });
   root.style.display = "none";
-  root.style.zIndex = "30";
-  root.style.overflowY = "auto";
   document.body.appendChild(root);
 
   let isOpen = false;
@@ -18,25 +15,17 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
     root.innerHTML = "";
 
     const panel = document.createElement("div");
-    panel.style.maxWidth = "980px";
-    panel.style.margin = "0 auto";
-    panel.style.background = "rgba(8, 12, 24, 0.92)";
-    panel.style.border = "1px solid rgba(255,255,255,0.15)";
-    panel.style.padding = "20px";
-    panel.style.boxShadow = "0 20px 60px rgba(0,0,0,0.35)";
+    stylePanel(panel, { maxWidth: "1120px", padding: "24px" });
     root.appendChild(panel);
 
     const title = document.createElement("div");
     title.textContent = "Pause Menu";
-    title.style.fontSize = "28px";
-    title.style.fontWeight = "800";
-    title.style.marginBottom = "12px";
+    styleHeading(title, { size: "clamp(2rem, 4vw, 3.2rem)", marginBottom: "8px" });
     panel.appendChild(title);
 
     const subtitle = document.createElement("div");
     subtitle.textContent = model.mode === "hub" ? "You are in the hub world." : `Current world: ${model.worldName}`;
-    subtitle.style.opacity = "0.85";
-    subtitle.style.marginBottom = "18px";
+    styleSubtext(subtitle, { marginBottom: "18px" });
     panel.appendChild(subtitle);
 
     const grid = document.createElement("div");
@@ -77,8 +66,7 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
 
     const story = document.createElement("div");
     story.style.marginTop = "16px";
-    story.style.padding = "14px";
-    story.style.background = "rgba(255,255,255,0.05)";
+    styleCard(story, { padding: "14px" });
     story.innerHTML = `<strong>Story</strong><br>${model.storyBlurb}<br><br>${model.worldBlurb}`;
     panel.appendChild(story);
 
@@ -90,8 +78,7 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
     panel.appendChild(buttonRow);
 
     const resumeButton = addButton(buttonRow, "Resume", onResume);
-    resumeButton.style.background = "#2e7dff";
-    resumeButton.style.color = "white";
+    resumeButton.classList.add("cj-button-primary");
 
     addButton(buttonRow, model.musicEnabled ? "Music On" : "Music Off", onToggleMusic);
     addButton(buttonRow, "Controls", () => {
@@ -122,8 +109,7 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
     model.worlds.forEach((world, index) => {
       const card = document.createElement("button");
       card.style.textAlign = "left";
-      card.style.padding = "12px";
-      card.style.border = "1px solid rgba(255,255,255,0.15)";
+      styleCard(card, { padding: "12px", active: world.accessible });
       card.style.background = world.accessible ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)";
       card.style.color = world.accessible ? "white" : "rgba(255,255,255,0.45)";
       card.style.cursor = world.accessible ? "pointer" : "not-allowed";
@@ -187,11 +173,7 @@ function makeSection(title, items) {
 function addButton(parent, label, handler) {
   const button = document.createElement("button");
   button.textContent = label;
-  button.style.padding = "10px 14px";
-  button.style.border = "none";
-  button.style.background = "rgba(255,255,255,0.12)";
-  button.style.color = "inherit";
-  button.style.cursor = "pointer";
+  styleButton(button);
   button.addEventListener("click", handler);
   parent.appendChild(button);
   return button;

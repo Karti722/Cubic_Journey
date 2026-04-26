@@ -1,16 +1,12 @@
+import { ensureUiTheme, styleButton, styleCard, styleHeading, styleOverlayRoot, stylePanel, styleSubtext } from "./ui-theme.js";
 import { SKILL_DEFINITIONS } from "../skills/skill-data.js";
 
 export function createShopMenu({ getModel, onBuySkill, onClose }) {
+  ensureUiTheme();
+
   const root = document.createElement("div");
-  root.style.position = "fixed";
-  root.style.inset = "0";
-  root.style.background = "rgba(0, 0, 0, 0.82)";
-  root.style.color = "white";
-  root.style.padding = "24px";
-  root.style.fontFamily = "sans-serif";
+  styleOverlayRoot(root, { zIndex: 40, background: "radial-gradient(circle at 85% 15%, rgba(255, 213, 108, 0.16), rgba(3, 4, 10, 0.94) 58%), linear-gradient(180deg, rgba(2, 4, 10, 0.84), rgba(0, 0, 0, 0.96))" });
   root.style.display = "none";
-  root.style.zIndex = "40";
-  root.style.overflowY = "auto";
   document.body.appendChild(root);
 
   let isOpen = false;
@@ -20,25 +16,17 @@ export function createShopMenu({ getModel, onBuySkill, onClose }) {
     root.innerHTML = "";
 
     const panel = document.createElement("div");
-    panel.style.maxWidth = "1080px";
-    panel.style.margin = "0 auto";
-    panel.style.background = "rgba(8, 12, 24, 0.95)";
-    panel.style.border = "1px solid rgba(255,255,255,0.15)";
-    panel.style.padding = "20px";
-    panel.style.boxShadow = "0 20px 60px rgba(0,0,0,0.35)";
+    stylePanel(panel, { maxWidth: "1100px", padding: "22px" });
     root.appendChild(panel);
 
     const title = document.createElement("div");
     title.textContent = "Skill Shop";
-    title.style.fontSize = "28px";
-    title.style.fontWeight = "800";
-    title.style.marginBottom = "8px";
+    styleHeading(title, { size: "clamp(2rem, 4vw, 3rem)", marginBottom: "8px" });
     panel.appendChild(title);
 
     const currency = document.createElement("div");
     currency.textContent = `Coins: ${model.currency}`;
-    currency.style.opacity = "0.85";
-    currency.style.marginBottom = "18px";
+    styleSubtext(currency, { marginBottom: "18px" });
     panel.appendChild(currency);
 
     const grid = document.createElement("div");
@@ -49,18 +37,16 @@ export function createShopMenu({ getModel, onBuySkill, onClose }) {
 
     SKILL_DEFINITIONS.forEach(skill => {
       const card = document.createElement("div");
-      card.style.padding = "14px";
-      card.style.background = "rgba(255,255,255,0.05)";
-      card.style.border = "1px solid rgba(255,255,255,0.12)";
+      styleCard(card, { padding: "14px" });
 
       const heading = document.createElement("div");
-      heading.style.fontWeight = "700";
+      heading.className = "cj-kicker";
       heading.textContent = skill.name;
       card.appendChild(heading);
 
       const desc = document.createElement("div");
       desc.style.marginTop = "6px";
-      desc.style.opacity = "0.84";
+      desc.style.color = "rgba(255,255,255,0.84)";
       desc.textContent = skill.description;
       card.appendChild(desc);
 
@@ -73,11 +59,9 @@ export function createShopMenu({ getModel, onBuySkill, onClose }) {
       const button = document.createElement("button");
       button.textContent = owned ? "Owned" : `Buy ${skill.cost}`;
       button.style.marginTop = "10px";
-      button.style.padding = "8px 12px";
-      button.style.border = "none";
       button.style.cursor = owned || model.currency < skill.cost ? "not-allowed" : "pointer";
-      button.style.background = owned ? "rgba(128,255,160,0.18)" : model.currency >= skill.cost ? "#2e7dff" : "rgba(255,255,255,0.12)";
-      button.style.color = "white";
+      styleButton(button, { primary: !owned && model.currency >= skill.cost, fullWidth: true });
+      if (owned) button.style.background = "rgba(100, 255, 168, 0.16)";
       button.disabled = owned || model.currency < skill.cost;
       button.addEventListener("click", () => {
         onBuySkill(skill.id);
@@ -115,11 +99,7 @@ export function createShopMenu({ getModel, onBuySkill, onClose }) {
 function addButton(parent, label, handler) {
   const button = document.createElement("button");
   button.textContent = label;
-  button.style.padding = "10px 14px";
-  button.style.border = "none";
-  button.style.background = "rgba(255,255,255,0.12)";
-  button.style.color = "inherit";
-  button.style.cursor = "pointer";
+  styleButton(button, { compact: false });
   button.addEventListener("click", handler);
   parent.appendChild(button);
   return button;

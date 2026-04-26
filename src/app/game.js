@@ -22,6 +22,7 @@ import { createPauseMenu } from "../game/ui/pause-menu.js";
 import { createDebugMenu } from "../game/debug/debug-menu.js";
 import { createControlsMenu } from "../game/ui/controls-menu.js";
 import { createShopMenu } from "../game/ui/shop-menu.js";
+import { createLoadingScreen } from "../game/ui/loading-screen.js";
 import { STORY } from "../game/story/story-data.js";
 import { clearSave, loadSave, writeSave } from "../game/persistence/save-store.js";
 import { createAudioEngine } from "../game/audio/audio-engine.js";
@@ -54,6 +55,7 @@ export function startGame(uiElement) {
   const hud = createHud(uiElement);
   const audio = createAudioEngine();
   const effects = createActionEffects(scene);
+  const loadingScreen = createLoadingScreen();
 
   const defaultSave = createDefaultCampaignSave(GAME_CONFIG.campaignWorlds);
   const loadedSave = loadSave(defaultSave);
@@ -69,23 +71,38 @@ export function startGame(uiElement) {
   let lastGrounded = false;
   let turnEffectCooldown = 0;
   let moveEffectCooldown = 0;
+  let worldLoadToken = 0;
+  let isWorldLoading = false;
 
   const velocity = new THREE.Vector3();
   const ability = createAbilityState(PLAYER_CONFIG.extraAirJumps);
   let debugToggleLatch = false;
 
-  function loadDefinition(definition) {
-    if (runtime) runtime.dispose();
-    runtime = buildWorldRuntime(scene, definition);
-    player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
-    velocity.set(0, 0, 0);
-    resetAbilityState(ability, PLAYER_CONFIG.extraAirJumps);
-    grounded = false;
-    collectedCoins = 0;
+  function loadDefinition(definition, loadingMessage = "Building the world...") {
+    const loadToken = ++worldLoadToken;
+    isWorldLoading = true;
+    loadingScreen.show(loadingMessage);
 
-    if (runtime.enemies && runtime.enemies.length > 0) {
-      audio.playSfx("enemy", 0.45);
-    }
+    setTimeout(() => {
+      if (loadToken !== worldLoadToken) return;
+
+      if (runtime) runtime.dispose();
+      runtime = buildWorldRuntime(scene, definition);
+      player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
+      velocity.set(0, 0, 0);
+      resetAbilityState(ability, PLAYER_CONFIG.extraAirJumps);
+      grounded = false;
+      collectedCoins = 0;
+
+      if (runtime.enemies && runtime.enemies.length > 0) {
+        audio.playSfx("enemy", 0.45);
+      }
+
+      setMusicForCurrentState();
+      hud.update(buildHudModel());
+      isWorldLoading = false;
+      loadingScreen.hide();
+    }, 0);
   }
 
   function triggerDamageFeedback(elapsed) {
@@ -109,14 +126,12 @@ export function startGame(uiElement) {
 
   function loadHub() {
     const definition = createHubDefinition({ canAccessWorld: campaign.canAccessWorld });
-    loadDefinition(definition);
-    setMusicForCurrentState();
+    loadDefinition(definition, "Entering the hub...");
   }
 
   function loadCurrentStage() {
     const definition = createStageDefinition(campaign.state.worldIndex, campaign.state.stageIndex);
-    loadDefinition(definition);
-    setMusicForCurrentState();
+    loadDefinition(definition, "Loading the next stage...");
   }
 
   function persistProgress() {
@@ -170,8 +185,6 @@ export function startGame(uiElement) {
     campaign.enterHub();
     loadHub();
     persistProgress();
-    worldMenu.render();
-    pauseMenu.render();
   }
 
   function travelToWorld(worldIndex, stageIndex) {
@@ -180,8 +193,6 @@ export function startGame(uiElement) {
 
     loadCurrentStage();
     persistProgress();
-    worldMenu.render();
-    pauseMenu.render();
     return true;
   }
 
@@ -198,8 +209,6 @@ export function startGame(uiElement) {
 
     loadCurrentStage();
     persistProgress();
-    worldMenu.render();
-    pauseMenu.render();
     return true;
   }
 
@@ -469,6 +478,11 @@ export function startGame(uiElement) {
 
     const dt = Math.min(clock.getDelta(), 0.033);
     const elapsed = clock.elapsedTime;
+
+    if (isWorldLoading) {
+      renderer.render(scene, camera);
+      return;
+    }
 
     if (!runtime) return;
 

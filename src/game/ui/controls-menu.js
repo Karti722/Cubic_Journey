@@ -1,14 +1,11 @@
+import { ensureUiTheme, styleButton, styleCard, styleHeading, styleOverlayRoot, stylePanel, styleSubtext } from "./ui-theme.js";
+
 export function createControlsMenu({ getBindings, onRebind, onReset, onClose }) {
+  ensureUiTheme();
+
   const root = document.createElement("div");
-  root.style.position = "fixed";
-  root.style.inset = "0";
-  root.style.background = "rgba(0, 0, 0, 0.82)";
-  root.style.color = "white";
-  root.style.padding = "24px";
-  root.style.fontFamily = "sans-serif";
+  styleOverlayRoot(root, { zIndex: 40, background: "radial-gradient(circle at 20% 10%, rgba(126, 231, 255, 0.18), rgba(2, 4, 10, 0.94) 58%), linear-gradient(180deg, rgba(2, 4, 10, 0.84), rgba(0, 0, 0, 0.96))" });
   root.style.display = "none";
-  root.style.zIndex = "40";
-  root.style.overflowY = "auto";
   document.body.appendChild(root);
 
   let isOpen = false;
@@ -19,27 +16,19 @@ export function createControlsMenu({ getBindings, onRebind, onReset, onClose }) 
     root.innerHTML = "";
 
     const panel = document.createElement("div");
-    panel.style.maxWidth = "920px";
-    panel.style.margin = "0 auto";
-    panel.style.background = "rgba(8, 12, 24, 0.95)";
-    panel.style.border = "1px solid rgba(255,255,255,0.15)";
-    panel.style.padding = "20px";
-    panel.style.boxShadow = "0 20px 60px rgba(0,0,0,0.35)";
+    stylePanel(panel, { maxWidth: "980px", padding: "22px" });
     root.appendChild(panel);
 
     const title = document.createElement("div");
     title.textContent = "Controls";
-    title.style.fontSize = "28px";
-    title.style.fontWeight = "800";
-    title.style.marginBottom = "8px";
+    styleHeading(title, { size: "clamp(2rem, 4vw, 3rem)", marginBottom: "8px" });
     panel.appendChild(title);
 
     const hint = document.createElement("div");
     hint.textContent = pendingAction
       ? `Press any key to bind ${getActionLabel(pendingAction)}`
       : "Click Rebind, then press a new key for that action.";
-    hint.style.opacity = "0.8";
-    hint.style.marginBottom = "16px";
+    styleSubtext(hint, { marginBottom: "16px" });
     panel.appendChild(hint);
 
     const controlsList = document.createElement("div");
@@ -50,18 +39,16 @@ export function createControlsMenu({ getBindings, onRebind, onReset, onClose }) 
 
     ACTION_ORDER.forEach(action => {
       const row = document.createElement("div");
-      row.style.padding = "12px";
-      row.style.background = "rgba(255,255,255,0.05)";
-      row.style.border = pendingAction === action ? "1px solid rgba(80, 160, 255, 0.85)" : "1px solid rgba(255,255,255,0.12)";
+      styleCard(row, { padding: "12px", active: pendingAction === action });
 
       const label = document.createElement("div");
-      label.style.fontWeight = "700";
+      label.className = "cj-kicker";
       label.textContent = getActionLabel(action);
       row.appendChild(label);
 
       const current = document.createElement("div");
       current.style.margin = "6px 0 10px";
-      current.style.opacity = "0.85";
+      current.style.color = "rgba(255,255,255,0.85)";
       current.textContent = `Current: ${describeCodes(bindings[action])}`;
       row.appendChild(current);
 
@@ -164,11 +151,7 @@ function describeCodes(codes) {
 function addButton(parent, label, handler) {
   const button = document.createElement("button");
   button.textContent = label;
-  button.style.padding = "8px 12px";
-  button.style.border = "none";
-  button.style.background = "rgba(255,255,255,0.12)";
-  button.style.color = "inherit";
-  button.style.cursor = "pointer";
+  styleButton(button, { compact: true });
   button.addEventListener("click", handler);
   parent.appendChild(button);
   return button;

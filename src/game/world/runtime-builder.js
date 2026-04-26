@@ -2,9 +2,13 @@ import { THREE } from "../../engine/three.js";
 
 export function buildWorldRuntime(scene, definition) {
   scene.background = new THREE.Color(definition.skyColor);
+  scene.fog = new THREE.Fog(definition.skyColor, 26, 180);
 
   const root = new THREE.Group();
   scene.add(root);
+
+  const atmosphere = buildAtmosphere(definition.skyColor);
+  root.add(atmosphere.group);
 
   const colliders = [];
   const collectibles = [];
@@ -16,12 +20,25 @@ export function buildWorldRuntime(scene, definition) {
   for (const platform of definition.platforms) {
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(platform.sx, platform.sy, platform.sz),
-      new THREE.MeshStandardMaterial({ color: platform.color })
+      new THREE.MeshStandardMaterial({
+        color: platform.color,
+        roughness: 0.7,
+        metalness: 0.16,
+        emissive: tintColor(platform.color, 0.12),
+        emissiveIntensity: 0.12
+      })
     );
     mesh.position.set(platform.x, platform.y, platform.z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     root.add(mesh);
+
+    const glow = new THREE.Mesh(
+      new THREE.BoxGeometry(platform.sx + 0.14, platform.sy + 0.08, platform.sz + 0.14),
+      new THREE.MeshBasicMaterial({ color: tintColor(platform.color, 0.26), transparent: true, opacity: 0.08, depthWrite: false })
+    );
+    glow.position.set(platform.x, platform.y, platform.z);
+    root.add(glow);
 
     colliders.push({
       x: platform.x,
@@ -36,7 +53,7 @@ export function buildWorldRuntime(scene, definition) {
   for (const item of definition.collectibles) {
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(0.4, 10, 10),
-      new THREE.MeshStandardMaterial({ color: 0xffd84d, emissive: 0x775500 })
+      new THREE.MeshStandardMaterial({ color: 0xffd84d, emissive: 0xffaa22, emissiveIntensity: 0.7, roughness: 0.35, metalness: 0.25 })
     );
     mesh.position.set(item.x, item.y, item.z);
     root.add(mesh);
@@ -46,7 +63,7 @@ export function buildWorldRuntime(scene, definition) {
   for (const pad of definition.jumpPads || []) {
     const mesh = new THREE.Mesh(
       new THREE.CylinderGeometry(0.8, 0.8, 0.35, 16),
-      new THREE.MeshStandardMaterial({ color: 0x33ff99, emissive: 0x114422 })
+      new THREE.MeshStandardMaterial({ color: 0x33ff99, emissive: 0x00dd88, emissiveIntensity: 0.6, roughness: 0.45, metalness: 0.2 })
     );
     mesh.position.set(pad.x, pad.y, pad.z);
     root.add(mesh);
@@ -56,7 +73,7 @@ export function buildWorldRuntime(scene, definition) {
   for (const orb of definition.dashOrbs || []) {
     const mesh = new THREE.Mesh(
       new THREE.IcosahedronGeometry(0.45, 0),
-      new THREE.MeshStandardMaterial({ color: 0x6ad7ff, emissive: 0x1b4c7a })
+      new THREE.MeshStandardMaterial({ color: 0x6ad7ff, emissive: 0x2bb3ff, emissiveIntensity: 0.75, roughness: 0.25, metalness: 0.45 })
     );
     mesh.position.set(orb.x, orb.y, orb.z);
     root.add(mesh);
@@ -66,7 +83,7 @@ export function buildWorldRuntime(scene, definition) {
   for (const enemyDef of definition.enemies || []) {
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(enemyDef.radius || 0.6, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0xff4444, emissive: 0x331111 })
+      new THREE.MeshStandardMaterial({ color: 0xff4444, emissive: 0x662222, emissiveIntensity: 0.55, roughness: 0.35, metalness: 0.12 })
     );
     mesh.position.set(enemyDef.x, enemyDef.y, enemyDef.z);
     root.add(mesh);
@@ -87,7 +104,7 @@ export function buildWorldRuntime(scene, definition) {
   if (definition.goal) {
     goal = new THREE.Mesh(
       new THREE.BoxGeometry(1.7, 1.7, 1.7),
-      new THREE.MeshStandardMaterial({ color: definition.goal.color })
+      new THREE.MeshStandardMaterial({ color: definition.goal.color, emissive: tintColor(definition.goal.color, 0.35), emissiveIntensity: 0.8, roughness: 0.22, metalness: 0.35 })
     );
     goal.position.set(definition.goal.x, definition.goal.y, definition.goal.z);
     goal.castShadow = true;
@@ -106,7 +123,13 @@ export function buildWorldRuntime(scene, definition) {
   for (const portal of definition.portals) {
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(1.1, 0.25, 10, 24),
-      new THREE.MeshStandardMaterial({ color: portal.unlocked ? portal.color : 0x555555 })
+      new THREE.MeshStandardMaterial({
+        color: portal.unlocked ? portal.color : 0x555555,
+        emissive: portal.unlocked ? tintColor(portal.color, 0.28) : 0x111111,
+        emissiveIntensity: portal.unlocked ? 0.7 : 0.15,
+        roughness: 0.35,
+        metalness: 0.25
+      })
     );
     ring.position.set(portal.position.x, portal.position.y, portal.position.z);
     ring.rotation.x = Math.PI / 2;
@@ -114,7 +137,13 @@ export function buildWorldRuntime(scene, definition) {
 
     const orb = new THREE.Mesh(
       new THREE.SphereGeometry(0.45, 12, 12),
-      new THREE.MeshStandardMaterial({ color: portal.unlocked ? 0xffffff : 0x333333 })
+      new THREE.MeshStandardMaterial({
+        color: portal.unlocked ? 0xffffff : 0x333333,
+        emissive: portal.unlocked ? 0x8ef4ff : 0x111111,
+        emissiveIntensity: portal.unlocked ? 0.75 : 0.1,
+        roughness: 0.3,
+        metalness: 0.4
+      })
     );
     orb.position.set(portal.position.x, portal.position.y, portal.position.z);
     root.add(orb);
@@ -123,6 +152,14 @@ export function buildWorldRuntime(scene, definition) {
   }
 
   function update(dt, elapsed) {
+    atmosphere.group.rotation.y += dt * atmosphere.spinSpeed;
+    atmosphere.group.rotation.x = Math.sin(elapsed * 0.05) * 0.03;
+
+    atmosphere.glowGroup.children.forEach((child, index) => {
+      child.rotation.y += dt * (0.12 + index * 0.03);
+      child.position.y = child.userData.baseY + Math.sin(elapsed * 0.4 + index) * 0.25;
+    });
+
     if (goal) {
       goal.rotation.y += dt * 2;
       goal.position.y += Math.sin(elapsed * 2) * 0.002;
@@ -195,4 +232,57 @@ export function buildWorldRuntime(scene, definition) {
     update,
     dispose
   };
+}
+
+function buildAtmosphere(skyColor) {
+  const group = new THREE.Group();
+
+  const skyDome = new THREE.Mesh(
+    new THREE.SphereGeometry(900, 28, 18),
+    new THREE.MeshBasicMaterial({ color: tintColor(skyColor, 0.08), side: THREE.BackSide, transparent: true, opacity: 0.98 })
+  );
+  group.add(skyDome);
+
+  const starsGeometry = new THREE.BufferGeometry();
+  const starCount = 420;
+  const positions = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount; i += 1) {
+    const radius = 280 + Math.random() * 520;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(THREE.MathUtils.randFloatSpread(2));
+    positions[i * 3 + 0] = Math.cos(theta) * Math.sin(phi) * radius;
+    positions[i * 3 + 1] = Math.cos(phi) * radius;
+    positions[i * 3 + 2] = Math.sin(theta) * Math.sin(phi) * radius;
+  }
+  starsGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  const stars = new THREE.Points(
+    starsGeometry,
+    new THREE.PointsMaterial({ color: 0xe2f3ff, size: 1.6, transparent: true, opacity: 0.55, depthWrite: false })
+  );
+  group.add(stars);
+
+  const glowGroup = new THREE.Group();
+  const glows = [0x8ed0ff, 0xff9a65, 0x9c85ff, 0x7effd4];
+  glows.forEach((color, index) => {
+    const orb = new THREE.Mesh(
+      new THREE.SphereGeometry(7 + index * 1.8, 16, 12),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.16, depthWrite: false })
+    );
+    orb.position.set(Math.cos(index) * 42, 26 + index * 12, Math.sin(index * 1.3) * 42);
+    orb.userData.baseY = orb.position.y;
+    glowGroup.add(orb);
+  });
+  group.add(glowGroup);
+
+  return {
+    group,
+    glowGroup,
+    spinSpeed: 0.02
+  };
+}
+
+function tintColor(hex, amount) {
+  const color = new THREE.Color(hex);
+  color.lerp(new THREE.Color(0xffffff), amount);
+  return color.getHex();
 }

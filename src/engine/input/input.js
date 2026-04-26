@@ -1,6 +1,7 @@
-export function createInput(targetElement, onDrag, bindings = {}) {
+export function createInput(targetElement, onDrag, initialBindings = {}) {
   const keys = {};
-  const actionLatch = {};
+  const prevKeys = {};
+  const bindings = cloneBindings(initialBindings);
 
   let isDragging = false;
   let lastMouseX = 0;
@@ -8,7 +9,7 @@ export function createInput(targetElement, onDrag, bindings = {}) {
 
   function handleKeyDown(event) {
     keys[event.code] = true;
-    if (event.code.startsWith("Arrow") || isBoundToAction(event.code, bindings)) event.preventDefault();
+    if (event.code.startsWith("Arrow")) event.preventDefault();
   }
 
   function handleKeyUp(event) {
@@ -44,31 +45,58 @@ export function createInput(targetElement, onDrag, bindings = {}) {
 
   return {
     keys,
-    bindings,
-    isActionDown(action) {
-      const codes = bindings[action] || [];
-      return codes.some(code => Boolean(keys[code]));
-    },
-    isActionPressed(action) {
-      const pressed = this.isActionDown(action);
-      if (pressed) {
-        if (actionLatch[action]) return false;
-        actionLatch[action] = true;
+    isActionDown,
+    isActionPressed,
+    rebindAction,
+    clearAction
+  };
+
+  function isActionDown(action) {
+    const codes = bindings[action] || [];
+    return codes.some(code => keys[code]);
+  }
+
+  function isActionPressed(action) {
+    const codes = bindings[action] || [];
+
+    for (const code of codes) {
+      const isDown = Boolean(keys[code]);
+      const wasDown = Boolean(prevKeys[code]);
+      if (isDown && !wasDown) {
+        prevKeys[code] = true;
         return true;
       }
 
-      actionLatch[action] = false;
-      return false;
-    },
-    rebindAction(action, code) {
-      bindings[action] = [code];
-    },
-    clearAction(action) {
-      bindings[action] = [];
+      if (!isDown && wasDown) {
+        prevKeys[code] = false;
+      }
     }
-  };
+
+    return false;
+  }
+
+  function rebindAction(action, code) {
+    if (!action || !code) return;
+    bindings[action] = [code];
+    prevKeys[code] = false;
+  }
+
+  function clearAction(action) {
+    if (!action) return;
+    const codes = bindings[action] || [];
+    for (const code of codes) {
+      prevKeys[code] = false;
+    }
+    bindings[action] = [];
+  }
 }
 
-function isBoundToAction(code, bindings) {
-  return Object.values(bindings).some(codes => Array.isArray(codes) && codes.includes(code));
+function cloneBindings(source) {
+  const cloned = {};
+
+  for (const [action, codes] of Object.entries(source || {})) {
+    cloned[action] = Array.isArray(codes) ? [...codes] : [];
+  }
+
+  return cloned;
 }

@@ -645,7 +645,7 @@ export function startGame(uiElement) {
 
     if (campaign.state.mode === "hub") {
       const nearbyPortal = findNearbyPortal(player, runtime.portals, GAME_CONFIG.portalRadius);
-      const pressedEnter = isKeyPressedOnce("KeyE");
+      const pressedEnter = controls.isActionPressed("interact");
 
       if (nearbyPortal && pressedEnter && nearbyPortal.unlocked) {
         const progress = campaign.state.worldProgress[nearbyPortal.worldIndex];

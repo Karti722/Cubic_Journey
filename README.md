@@ -155,31 +155,18 @@ Tip: for a platformer, look for looping ambient tracks for the hub and slower ex
 1. Push your latest changes to GitHub.
 2. In Netlify, click Add new site, then Import an existing project.
 3. Choose GitHub and select this repository.
-4. Use these build settings:
+4. Set Production branch to main.
+5. Use these build settings:
 
 - Build command: (leave empty)
 - Publish directory: .
 
-5. Click Deploy site.
-
-## Deployment Branch Strategy
-
-This repository now supports a dedicated deployment branch named deployment.
-
-- deployment is treated as a mirror branch for hosting.
-- Do not make manual commits directly on deployment.
-- A GitHub Actions workflow force-syncs deployment from a source ref, so you avoid rebase conflicts.
-- Automatic sync runs on pushes to main.
-- Manual sync supports any future branch through workflow dispatch.
-
-Why this avoids rebase conflicts:
-
-- The deployment branch is reset from a source branch instead of rebased.
-- Since deployment has no long-lived unique commits, there is no divergent history to reconcile.
+6. Click Deploy site.
 
 ### Netlify Notes
 
 - This is a static site, so no build step is required.
+- Main is the deploy branch for this repository.
 - If you later add a bundler (like Vite), update Build command and Publish directory accordingly.
 - The included netlify.toml file keeps the project deployable as a plain static site.
 

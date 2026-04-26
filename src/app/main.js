@@ -1,4 +1,4 @@
-import { startGame } from "./game.js?v=8";
+import { startGame } from "./game.js?v=9";
 import { createTitleScreen } from "../game/ui/title-screen.js";
 import { createLoadingScreen } from "../game/ui/loading-screen.js";
 

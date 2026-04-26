@@ -1,6 +1,6 @@
 import { ensureUiTheme, styleButton, styleCard, styleHeading, styleOverlayRoot, stylePanel, styleSubtext } from "./ui-theme.js";
 
-export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld, onResetSave, onToggleMusic, onOpenControls, onOpenShop }) {
+export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld, onResetSave, onToggleMusic, onOpenControls, onOpenShop, onOpenInfo }) {
   ensureUiTheme();
 
   const root = document.createElement("div");
@@ -17,9 +17,12 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
     const panel = document.createElement("div");
     stylePanel(panel, { maxWidth: "1120px", padding: "24px" });
     root.appendChild(panel);
-
-    const title = document.createElement("div");
-    title.textContent = "Pause Menu";
+    addButton(buttonRow, "Shop", () => {
+      if (typeof onOpenShop === "function") onOpenShop();
+    });
+    addButton(buttonRow, "Campaign Info", () => {
+      if (typeof onOpenInfo === "function") onOpenInfo();
+    });
     styleHeading(title, { size: "clamp(2rem, 4vw, 3.2rem)", marginBottom: "8px" });
     panel.appendChild(title);
 
@@ -86,6 +89,9 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
     });
     addButton(buttonRow, "Shop", () => {
       if (typeof onOpenShop === "function") onOpenShop();
+    });
+    addButton(buttonRow, "Campaign Info", () => {
+      if (typeof onOpenInfo === "function") onOpenInfo();
     });
     addButton(buttonRow, "Travel to Hub", () => {
       onSelectHub();

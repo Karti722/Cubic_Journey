@@ -6,20 +6,20 @@ export function ensureUiTheme() {
 
   const style = document.createElement("style");
   style.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
     :root {
       color-scheme: dark;
-      --cj-text: #f7f8ff;
-      --cj-muted: rgba(247, 248, 255, 0.74);
-      --cj-panel: rgba(8, 12, 24, 0.74);
-      --cj-panel-strong: rgba(12, 18, 36, 0.94);
-      --cj-border: rgba(255, 255, 255, 0.16);
-      --cj-accent: #66a4ff;
-      --cj-accent-strong: #7ee7ff;
-      --cj-accent-warm: #ffd56c;
-      --cj-danger: #ff6b87;
-      --cj-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
+      --cj-text: #f3f6fb;
+      --cj-muted: rgba(243, 246, 251, 0.72);
+      --cj-panel: rgba(18, 24, 35, 0.92);
+      --cj-panel-strong: rgba(15, 20, 30, 0.98);
+      --cj-border: rgba(255, 255, 255, 0.1);
+      --cj-accent: #5fa8ff;
+      --cj-accent-strong: #8ad3ff;
+      --cj-accent-warm: #f5c45e;
+      --cj-danger: #ff6f87;
+      --cj-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
     }
 
     html, body {
@@ -27,13 +27,9 @@ export function ensureUiTheme() {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background:
-        radial-gradient(circle at 20% 20%, rgba(71, 123, 255, 0.16), transparent 32%),
-        radial-gradient(circle at 80% 10%, rgba(126, 231, 255, 0.12), transparent 22%),
-        radial-gradient(circle at 50% 100%, rgba(255, 165, 96, 0.08), transparent 30%),
-        linear-gradient(180deg, #03050d 0%, #07101d 58%, #020308 100%);
+      background: linear-gradient(180deg, #060a12 0%, #0b1220 55%, #05070d 100%);
       color: var(--cj-text);
-      font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+      font-family: Inter, 'Segoe UI', sans-serif;
     }
 
     body::before,
@@ -41,26 +37,26 @@ export function ensureUiTheme() {
       content: '';
       position: fixed;
       inset: auto;
-      width: 56vmax;
-      height: 56vmax;
+      width: 40vmax;
+      height: 40vmax;
       border-radius: 999px;
       pointer-events: none;
       z-index: 0;
-      filter: blur(85px);
-      opacity: 0.34;
+      filter: blur(80px);
+      opacity: 0.2;
       animation: cj-drift 18s ease-in-out infinite alternate;
     }
 
     body::before {
-      left: -16vmax;
-      top: -14vmax;
-      background: radial-gradient(circle, rgba(88, 140, 255, 0.72), rgba(88, 140, 255, 0.05) 60%, transparent 72%);
+      left: -10vmax;
+      top: -10vmax;
+      background: radial-gradient(circle, rgba(88, 140, 255, 0.7), rgba(88, 140, 255, 0.04) 60%, transparent 72%);
     }
 
     body::after {
-      right: -18vmax;
-      bottom: -16vmax;
-      background: radial-gradient(circle, rgba(126, 231, 255, 0.6), rgba(126, 231, 255, 0.04) 60%, transparent 74%);
+      right: -12vmax;
+      bottom: -12vmax;
+      background: radial-gradient(circle, rgba(126, 231, 255, 0.48), rgba(126, 231, 255, 0.04) 60%, transparent 74%);
       animation-delay: -9s;
     }
 
@@ -80,13 +76,13 @@ export function ensureUiTheme() {
 
     .cj-overlay {
       pointer-events: auto;
-      backdrop-filter: blur(18px) saturate(150%);
+      backdrop-filter: blur(10px) saturate(130%);
     }
 
     .cj-glass {
-      background: linear-gradient(180deg, rgba(15, 20, 38, 0.92), rgba(8, 11, 22, 0.88));
+      background: linear-gradient(180deg, var(--cj-panel), var(--cj-panel-strong));
       border: 1px solid var(--cj-border);
-      border-radius: 24px;
+      border-radius: 14px;
       box-shadow: var(--cj-shadow);
       position: relative;
       overflow: hidden;
@@ -96,50 +92,50 @@ export function ensureUiTheme() {
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(120deg, rgba(255,255,255,0.12), transparent 30%, transparent 70%, rgba(255,255,255,0.06));
+      background: linear-gradient(120deg, rgba(255,255,255,0.08), transparent 30%, transparent 70%, rgba(255,255,255,0.04));
       pointer-events: none;
-      opacity: 0.5;
+      opacity: 0.4;
     }
 
     .cj-title {
       margin: 0;
-      font-size: clamp(2rem, 4vw, 4.8rem);
-      line-height: 0.9;
-      letter-spacing: 0.08em;
+      font-size: clamp(1.6rem, 3vw, 3.4rem);
+      line-height: 0.95;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
-      text-shadow: 0 8px 36px rgba(0, 0, 0, 0.45);
     }
 
     .cj-kicker {
       margin: 0;
-      letter-spacing: 0.24em;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: rgba(255,255,255,0.62);
-      font-size: 0.78rem;
+      color: rgba(255,255,255,0.56);
+      font-size: 0.7rem;
     }
 
     .cj-subtitle {
       color: var(--cj-muted);
-      line-height: 1.55;
+      line-height: 1.45;
+      font-size: 0.95rem;
     }
 
     .cj-button {
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
       color: white;
-      background: rgba(255,255,255,0.1);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+      box-shadow: 0 8px 18px rgba(0,0,0,0.16);
       cursor: pointer;
       transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
       font-family: inherit;
-      font-weight: 700;
+      font-weight: 600;
       letter-spacing: 0.02em;
     }
 
     .cj-button:hover {
-      transform: translateY(-1px) scale(1.01);
-      box-shadow: 0 12px 28px rgba(0,0,0,0.28);
-      border-color: rgba(126, 231, 255, 0.4);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.24);
+      border-color: rgba(95, 168, 255, 0.45);
     }
 
     .cj-button:active {
@@ -147,14 +143,14 @@ export function ensureUiTheme() {
     }
 
     .cj-button-primary {
-      background: linear-gradient(135deg, var(--cj-accent), #4dd1ff);
-      border-color: rgba(126, 231, 255, 0.7);
-      color: #03101e;
+      background: linear-gradient(180deg, rgba(95, 168, 255, 0.96), rgba(55, 136, 230, 0.96));
+      border-color: rgba(140, 209, 255, 0.52);
+      color: #f5fbff;
     }
 
     .cj-button-danger {
-      background: linear-gradient(135deg, #ff6c8d, #ff9a6c);
-      border-color: rgba(255, 170, 190, 0.7);
+      background: linear-gradient(180deg, #ff6c8d, #ff8e6c);
+      border-color: rgba(255, 170, 190, 0.52);
       color: #1a0410;
     }
 
@@ -162,12 +158,12 @@ export function ensureUiTheme() {
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
-      border-radius: 999px;
-      padding: 0.4rem 0.75rem;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: rgba(255,255,255,0.88);
-      font-size: 0.82rem;
+      border-radius: 10px;
+      padding: 0.35rem 0.65rem;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.84);
+      font-size: 0.75rem;
       letter-spacing: 0.03em;
     }
 
@@ -177,10 +173,10 @@ export function ensureUiTheme() {
     }
 
     .cj-card {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 18px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
     }
 
     .cj-scrollbar {
@@ -199,7 +195,7 @@ export function ensureUiTheme() {
     }
 
     .cj-scrollbar::-webkit-scrollbar-thumb {
-      background: linear-gradient(180deg, rgba(126, 231, 255, 0.72), rgba(102, 164, 255, 0.72));
+      background: linear-gradient(180deg, rgba(126, 231, 255, 0.6), rgba(102, 164, 255, 0.72));
       border-radius: 999px;
       border: 2px solid rgba(0,0,0,0.18);
     }
@@ -227,10 +223,10 @@ export function styleOverlayRoot(root, options = {}) {
   ensureUiTheme();
   const {
     zIndex = 40,
-    padding = "24px",
+    padding = "18px",
     align = "center",
     justify = "center",
-    background = "radial-gradient(circle at 20% 20%, rgba(84, 122, 255, 0.28), rgba(3, 6, 14, 0.92) 56%), linear-gradient(180deg, rgba(2, 4, 10, 0.84), rgba(5, 9, 18, 0.96))"
+    background = "radial-gradient(circle at 20% 20%, rgba(84, 122, 255, 0.18), rgba(3, 6, 14, 0.94) 56%), linear-gradient(180deg, rgba(2, 4, 10, 0.82), rgba(5, 9, 18, 0.96))"
   } = options;
 
   root.classList.add("cj-overlay");
@@ -248,7 +244,7 @@ export function styleOverlayRoot(root, options = {}) {
 }
 
 export function stylePanel(panel, options = {}) {
-  const { maxWidth = "960px", padding = "24px", accent = "rgba(126, 231, 255, 0.15)" } = options;
+  const { maxWidth = "860px", padding = "18px", accent = "rgba(95, 168, 255, 0.18)" } = options;
   panel.classList.add("cj-glass", "cj-pop-in");
   panel.style.width = "100%";
   panel.style.maxWidth = maxWidth;
@@ -259,7 +255,7 @@ export function stylePanel(panel, options = {}) {
 }
 
 export function styleHeading(node, options = {}) {
-  const { size = "clamp(2rem, 4vw, 4.25rem)", marginBottom = "0.25rem", align = "left" } = options;
+  const { size = "clamp(1.5rem, 3vw, 2.8rem)", marginBottom = "0.2rem", align = "left" } = options;
   node.classList.add("cj-title");
   node.style.fontSize = size;
   node.style.marginBottom = marginBottom;
@@ -271,7 +267,7 @@ export function styleKicker(node) {
 }
 
 export function styleSubtext(node, options = {}) {
-  const { marginBottom = "0", fontSize = "1rem", align = "left" } = options;
+  const { marginBottom = "0", fontSize = "0.95rem", align = "left" } = options;
   node.classList.add("cj-subtitle");
   node.style.marginBottom = marginBottom;
   node.style.fontSize = fontSize;
@@ -283,8 +279,8 @@ export function styleButton(button, options = {}) {
   button.classList.add("cj-button");
   if (primary) button.classList.add("cj-button-primary");
   if (danger) button.classList.add("cj-button-danger");
-  button.style.padding = compact ? "8px 12px" : "11px 16px";
-  button.style.minHeight = compact ? "34px" : "42px";
+  button.style.padding = compact ? "7px 10px" : "9px 14px";
+  button.style.minHeight = compact ? "30px" : "36px";
   button.style.width = fullWidth ? "100%" : "auto";
 }
 
@@ -301,7 +297,7 @@ export function styleChip(node) {
 }
 
 export function styleGrid(node, options = {}) {
-  const { columns = "repeat(auto-fit, minmax(220px, 1fr))", gap = "12px" } = options;
+  const { columns = "repeat(auto-fit, minmax(200px, 1fr))", gap = "10px" } = options;
   node.classList.add("cj-grid");
   node.style.gridTemplateColumns = columns;
   node.style.gap = gap;

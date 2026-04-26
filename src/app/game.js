@@ -17,6 +17,7 @@ import {
   resolveEnemyContacts
 } from "../game/systems/interaction-system.js";
 import { createHud } from "../game/ui/hud.js";
+import { createCampaignInfoMenu } from "../game/ui/campaign-info-menu.js";
 import { createWorldMenu } from "../game/ui/world-menu.js";
 import { createPauseMenu } from "../game/ui/pause-menu.js";
 import { createDebugMenu } from "../game/debug/debug-menu.js";
@@ -52,7 +53,24 @@ export function startGame(uiElement) {
   const cameraController = createCameraController(camera, player);
   const controls = createInput(renderer.domElement, cameraController.rotateByMouse, controlBindings);
   const { keys } = controls;
-  const hud = createHud(uiElement);
+  const campaignInfoMenu = createCampaignInfoMenu({
+    getModel: () => buildCampaignInfoModel(),
+    onClose: () => {
+      if (campaignInfoReturnToPause) {
+        pauseMenu.open();
+      } else {
+        paused = false;
+        if (musicEnabled) audio.resumeMusic();
+      }
+    }
+  });
+  const hud = createHud(uiElement, {
+    onOpenInfo: () => {
+      if (campaignInfoMenu.isOpen()) return;
+      paused = true;
+      openCampaignInfo(false);
+    }
+  });
   const audio = createAudioEngine();
   const effects = createActionEffects(scene);
   const loadingScreen = createLoadingScreen();
@@ -73,6 +91,14 @@ export function startGame(uiElement) {
   let moveEffectCooldown = 0;
   let worldLoadToken = 0;
   let isWorldLoading = false;
+
+  let campaignInfoReturnToPause = false;
+
+  function openCampaignInfo(fromPause = false) {
+    campaignInfoReturnToPause = fromPause;
+    campaignInfoMenu.open();
+    audio.pauseMusic();
+  }
 
   const velocity = new THREE.Vector3();
   const ability = createAbilityState(PLAYER_CONFIG.extraAirJumps);
@@ -283,6 +309,11 @@ export function startGame(uiElement) {
     onOpenShop: () => {
       pauseMenu.close();
       shopMenu.open();
+    },
+    onOpenInfo: () => {
+      pauseMenu.close();
+      paused = true;
+      openCampaignInfo(true);
     }
   });
 
@@ -355,6 +386,37 @@ export function startGame(uiElement) {
       currency: campaign.state.currency,
       skillCount: countOwnedSkills(campaign.state.skills),
       storyLine: STORY.worldNarratives[campaign.state.worldIndex],
+      isBossStage: runtime.isBossStage,
+      bossName: runtime.isBossStage ? STORY.bossNames[campaign.state.worldIndex] : ""
+    };
+  }
+
+  function buildCampaignInfoModel() {
+    if (campaign.state.mode === "hub") {
+      return {
+        mode: "hub",
+        worldName: "World Hub",
+        storyLine: STORY.premise,
+        completedStages: campaign.state.totalCompletedStages,
+        totalStages: campaign.state.totalStages,
+        keyCubes: campaign.state.keyCubes,
+        currency: campaign.state.currency,
+        skillCount: countOwnedSkills(campaign.state.skills),
+        isBossStage: false,
+        bossName: "",
+      };
+    }
+
+    const world = GAME_CONFIG.campaignWorlds[campaign.state.worldIndex];
+    return {
+      mode: "level",
+      worldName: world.name,
+      storyLine: STORY.worldNarratives[campaign.state.worldIndex],
+      completedStages: campaign.state.totalCompletedStages,
+      totalStages: campaign.state.totalStages,
+      keyCubes: campaign.state.keyCubes,
+      currency: campaign.state.currency,
+      skillCount: countOwnedSkills(campaign.state.skills),
       isBossStage: runtime.isBossStage,
       bossName: runtime.isBossStage ? STORY.bossNames[campaign.state.worldIndex] : ""
     };

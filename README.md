@@ -162,6 +162,21 @@ Tip: for a platformer, look for looping ambient tracks for the hub and slower ex
 
 5. Click Deploy site.
 
+## Deployment Branch Strategy
+
+This repository now supports a dedicated deployment branch named deployment.
+
+- deployment is treated as a mirror branch for hosting.
+- Do not make manual commits directly on deployment.
+- A GitHub Actions workflow force-syncs deployment from a source ref, so you avoid rebase conflicts.
+- Automatic sync runs on pushes to main.
+- Manual sync supports any future branch through workflow dispatch.
+
+Why this avoids rebase conflicts:
+
+- The deployment branch is reset from a source branch instead of rebased.
+- Since deployment has no long-lived unique commits, there is no divergent history to reconcile.
+
 ### Netlify Notes
 
 - This is a static site, so no build step is required.
@@ -193,13 +208,10 @@ Netlify is a good fit here because the project is plain HTML, CSS, and JavaScrip
 - src/game/systems/interaction-system.js: Goal/collectible/portal interactions
 - src/game/ui/hud.js: Dynamic HUD rendering
 - src/game/ui/pause-menu.js: Detailed pause menu, controls, and world switching
-<<<<<<< HEAD
 - src/game/debug/debug-menu.js: Branch-only debug travel menu and lock-bypass controls
-=======
 - src/game/ui/title-screen.js: Title screen and any-key start flow
 - src/game/ui/controls-menu.js: Key rebinding overlay
 - src/game/ui/shop-menu.js: Skill shop overlay
->>>>>>> main
 - src/game/audio/audio-engine.js: Background music and sound effect management
 - netlify.toml: Static deploy config for Netlify
 - src/game/story/story-data.js: Story and boss names

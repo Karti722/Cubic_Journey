@@ -117,7 +117,7 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
   centerBanner.appendChild(centerBannerBody);
 
   let centerBannerTimer = null;
-  let lastBossBanner = "";
+  let lastBossBannerKey = "";
 
   let campaignInfoExpanded = false;
   let hudCollapsed = false;
@@ -306,18 +306,22 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
 
   function updateBossBanner(model) {
     const bossText = model.mode !== "hub" && model.bossName ? model.bossName : "";
+    const bossKey = bossText ? `${model.worldName || ""}::${model.stageNumber || 0}::${bossText}` : "";
 
-    if (!bossText || bossText === lastBossBanner) {
-      if (!bossText && centerBanner.style.display !== "none") {
-        hideBossBanner();
-      }
+    if (!bossText) {
+      hideBossBanner();
+      lastBossBannerKey = "";
       return;
     }
 
-    lastBossBanner = bossText;
+    if (bossKey === lastBossBannerKey) return;
+
+    lastBossBannerKey = bossKey;
     centerBannerTitle.textContent = "Boss Encounter";
     centerBannerBody.textContent = bossText;
     centerBanner.style.display = "block";
+    centerBanner.style.opacity = "0";
+    centerBanner.style.transform = "translateY(10px) scale(0.98)";
     requestAnimationFrame(() => {
       centerBanner.style.opacity = "1";
       centerBanner.style.transform = "translateY(0) scale(1)";
@@ -329,13 +333,12 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
 
     centerBannerTimer = setTimeout(() => {
       hideBossBanner();
-    }, 3200);
+    }, 2200);
   }
 
   function hideBossBanner() {
-    lastBossBanner = "";
     centerBanner.style.opacity = "0";
-    centerBanner.style.transform = "translateY(10px) scale(0.98)";
+    centerBanner.style.transform = "translateY(-8px) scale(0.985)";
     if (centerBannerTimer) {
       clearTimeout(centerBannerTimer);
       centerBannerTimer = null;
@@ -344,7 +347,7 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
       if (centerBanner.style.opacity === "0") {
         centerBanner.style.display = "none";
       }
-    }, 240);
+    }, 280);
   }
 
   setHudCollapsed(false);

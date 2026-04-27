@@ -4,7 +4,7 @@ import { createCameraController } from "../engine/camera/camera-controller.js";
 import { createInput } from "../engine/input/input.js";
 import { GAME_CONFIG, PLAYER_CONFIG, getWorldStageCount } from "../game/config/game-config.js";
 import { createCampaignState, createDefaultCampaignSave } from "../game/campaign/campaign-state.js";
-import { createHubDefinition, createStageDefinition } from "../game/world/level-generator.js";
+import { createHubDefinition, createStageDefinition } from "../game/world/level-generator.js?v=3";
 import { buildWorldRuntime } from "../game/world/runtime-builder.js";
 import { updateHorizontalVelocity } from "../game/systems/movement-system.js";
 import { createAbilityState, resetAbilityState, stepPlayerPhysics } from "../game/systems/physics-system.js";
@@ -92,6 +92,7 @@ export function startGame(uiElement) {
   let worldLoadToken = 0;
   let isWorldLoading = false;
   const loadingScreenDelayMs = 220;
+  let endCreditsActive = false;
 
   let campaignInfoReturnToPause = false;
 
@@ -138,6 +139,44 @@ export function startGame(uiElement) {
     }, 0);
   }
 
+  function playEndCredits() {
+    if (endCreditsActive) return;
+    endCreditsActive = true;
+    paused = true;
+    audio.pauseMusic();
+    loadingScreen.hide();
+
+    const creditsRoot = document.createElement("div");
+    creditsRoot.style.position = "fixed";
+    creditsRoot.style.inset = "0";
+    creditsRoot.style.zIndex = "120";
+    creditsRoot.style.display = "grid";
+    creditsRoot.style.placeItems = "center";
+    creditsRoot.style.background = "radial-gradient(circle at 50% 40%, rgba(6, 10, 20, 0.84), rgba(0, 0, 0, 0.98))";
+    creditsRoot.style.color = "white";
+    creditsRoot.style.pointerEvents = "auto";
+
+    creditsRoot.innerHTML = `
+      <div style="width:min(720px, calc(100vw - 32px)); padding: 28px 24px; text-align:center; background: rgba(10, 16, 28, 0.94); border: 1px solid rgba(126, 231, 255, 0.22); border-radius: 18px; box-shadow: 0 28px 70px rgba(0,0,0,0.55);">
+        <div style="font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-bottom: 10px;">The End</div>
+        <div style="font-size: clamp(2rem, 5vw, 3.6rem); font-weight: 800; letter-spacing: 0.08em; margin-bottom: 10px; text-transform: uppercase;">Cubic Journey</div>
+        <div style="font-size: 1rem; line-height: 1.55; color: rgba(255,255,255,0.84); margin-bottom: 22px;">You cleared the final boss. The campaign will reset and return to the title screen.</div>
+        <div style="display:grid; gap:8px; color: rgba(255,255,255,0.72); font-size: 0.9rem; line-height: 1.45; margin-bottom: 18px;">
+          <div>Design, code, and vibe coding: one person.</div>
+          <div>Art, music, and UI polish: the game itself.</div>
+          <div>Thanks for playing.</div>
+        </div>
+        <div style="font-size: 0.82rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.56);">Returning to title screen...</div>
+      </div>
+    `;
+    document.body.appendChild(creditsRoot);
+
+    setTimeout(() => {
+      clearAllPlayerData();
+      location.reload();
+    }, 7000);
+  }
+
   function triggerDamageFeedback(elapsed) {
     damageCooldownUntil = elapsed + 0.85;
     audio.playSfx("damage", 0.82);
@@ -158,7 +197,7 @@ export function startGame(uiElement) {
   }
 
   function loadHub() {
-    const definition = createHubDefinition({ canAccessWorld: campaign.canAccessWorld });
+    const definition = createHubDefinition(campaign.state);
     loadDefinition(definition, "Entering the hub...");
   }
 
@@ -169,6 +208,23 @@ export function startGame(uiElement) {
 
   function persistProgress() {
     writeSave(campaign.getSaveData());
+  }
+
+  function clearAllPlayerData() {
+    clearSave();
+    try {
+      localStorage.removeItem("cubic-journey-controls-v1");
+    } catch {
+      // Ignore persistence failures.
+    }
+  }
+
+  function isCampaignCompleteFromSave() {
+    const bossWorlds = GAME_CONFIG.campaignWorlds
+      .map((world, index) => ({ world, index }))
+      .filter(({ world }) => world.hasBoss);
+
+    return bossWorlds.length > 0 && bossWorlds.every(({ index }) => campaign.state.worldProgress[index]?.bossDefeated);
   }
 
   function updateBindingsFromControls() {
@@ -325,6 +381,11 @@ export function startGame(uiElement) {
   });
 
   function buildPauseModel() {
+    const bossesClearedCount = campaign.state.worldProgress.filter((progress, index) => {
+      const world = GAME_CONFIG.campaignWorlds[index];
+      return world?.hasBoss ? progress.bossDefeated : true;
+    }).filter(Boolean).length;
+
     return {
       mode: campaign.state.mode,
       worldName: GAME_CONFIG.campaignWorlds[campaign.state.worldIndex]?.name || "World Hub",
@@ -340,7 +401,7 @@ export function startGame(uiElement) {
       musicEnabled,
       finalWin: campaign.state.finalWin,
       worldCount: GAME_CONFIG.campaignWorlds.length,
-      unlockedWorldCount: GAME_CONFIG.campaignWorlds.filter((_, index) => campaign.canAccessWorld(index)).length,
+      bossesClearedCount,
       saveSummary: `${campaign.state.worldProgress.map(progress => `${progress.highestCompletedStage + 1}/${1 + progress.highestUnlockedStage}`).join(" | ")}`,
       worlds: GAME_CONFIG.campaignWorlds.map((world, index) => {
         const progress = campaign.state.worldProgress[index];
@@ -512,6 +573,33 @@ export function startGame(uiElement) {
       persistProgress();
       pauseMenu.render();
       debugMenu.render();
+    },
+    onNearCompletion: () => {
+      campaign.state.keyCubes = GAME_CONFIG.requiredKeyCubes;
+      campaign.state.totalCompletedStages = campaign.state.totalStages - 1;
+      campaign.state.currency = 999;
+      campaign.state.finalWin = false;
+
+      campaign.state.worldProgress.forEach((progress, index) => {
+        const world = GAME_CONFIG.campaignWorlds[index];
+        const stageCount = getWorldStageCount(world);
+        progress.highestUnlockedStage = stageCount - 1;
+        progress.highestCompletedStage = stageCount - 2;
+        progress.keyCubeClaimed = !!world.keyCubeReward;
+        progress.bossDefeated = index !== GAME_CONFIG.finalWorldIndex;
+      });
+
+      const finalWorldProgress = campaign.state.worldProgress[GAME_CONFIG.finalWorldIndex];
+      if (finalWorldProgress) {
+        finalWorldProgress.highestUnlockedStage = getWorldStageCount(GAME_CONFIG.campaignWorlds[GAME_CONFIG.finalWorldIndex]) - 1;
+        finalWorldProgress.highestCompletedStage = finalWorldProgress.highestUnlockedStage - 1;
+        finalWorldProgress.keyCubeClaimed = true;
+        finalWorldProgress.bossDefeated = false;
+      }
+
+      persistProgress();
+      pauseMenu.render();
+      debugMenu.render();
     }
   });
 
@@ -525,7 +613,12 @@ export function startGame(uiElement) {
   addEventListener("pointerdown", unlockAudio);
   addEventListener("keydown", unlockAudio);
 
-  loadHub();
+  if (isCampaignCompleteFromSave()) {
+    campaign.state.finalWin = true;
+    playEndCredits();
+  } else {
+    loadHub();
+  }
   worldMenu.render();
   pauseMenu.render();
   debugMenu.render();
@@ -765,6 +858,11 @@ export function startGame(uiElement) {
         persistProgress();
         worldMenu.render();
         pauseMenu.render();
+
+        if (campaign.state.finalWin) {
+          playEndCredits();
+          return;
+        }
 
         if (result.transition === "hub") {
           loadHub();

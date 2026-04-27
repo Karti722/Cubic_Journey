@@ -40,6 +40,14 @@ export function resetControlBindings() {
   return structuredClone(DEFAULT_CONTROL_BINDINGS);
 }
 
+export function clearControlBindings() {
+  try {
+    localStorage.removeItem(CONTROL_SAVE_KEY);
+  } catch {
+    // Ignore persistence failures.
+  }
+}
+
 function mergeBindings(defaultBindings, loadedBindings) {
   const merged = structuredClone(defaultBindings);
 

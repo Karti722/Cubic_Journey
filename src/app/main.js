@@ -1,4 +1,4 @@
-import { startGame } from "./game.js?v=9";
+import { startGame } from "./game.js?v=12";
 import { createTitleScreen } from "../game/ui/title-screen.js";
 
 const uiElement = document.getElementById("ui");

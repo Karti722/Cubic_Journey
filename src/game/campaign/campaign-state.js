@@ -24,7 +24,7 @@ export function createCampaignState(worlds, saveData) {
     worldIndex: 0,
     stageIndex: 0,
     totalStages,
-    finalWin: false,
+    finalWin: Boolean(saveData.worldProgress?.[GAME_CONFIG.finalWorldIndex]?.bossDefeated),
     keyCubes: saveData.keyCubes,
     totalCompletedStages: saveData.totalCompletedStages,
     currency: saveData.currency,
@@ -33,6 +33,7 @@ export function createCampaignState(worlds, saveData) {
   };
 
   function canAccessWorld(worldIndex) {
+    if (state.worldProgress[worldIndex]?.bossDefeated) return false;
     if (worldIndex !== GAME_CONFIG.finalWorldIndex) return true;
     return state.keyCubes >= GAME_CONFIG.requiredKeyCubes;
   }

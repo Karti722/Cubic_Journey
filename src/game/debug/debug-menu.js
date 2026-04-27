@@ -1,6 +1,6 @@
 import { ensureUiTheme, styleButton, styleCard, styleHeading, styleOverlayRoot, stylePanel, styleSubtext } from "../ui/ui-theme.js";
 
-export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub, onUnlockAllSkills, onResetSkills, onMaxCurrency }) {
+export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub, onUnlockAllSkills, onResetSkills, onMaxCurrency, onNearCompletion }) {
   ensureUiTheme();
 
   const root = document.createElement("div");
@@ -57,6 +57,14 @@ export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub,
       close();
     });
     hubButton.style.background = "#184f3a";
+
+    if (typeof onNearCompletion === "function") {
+      const nearCompleteButton = addButton(controls, "Near Completion", () => {
+        onNearCompletion();
+        close();
+      });
+      nearCompleteButton.style.background = "#5b4a16";
+    }
 
     if (typeof onUnlockAllSkills === "function" || typeof onResetSkills === "function" || typeof onMaxCurrency === "function") {
       const skillLab = document.createElement("div");

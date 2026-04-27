@@ -17,20 +17,27 @@ export function createHubDefinition(campaignState) {
     { x: 0, y: -4, z: 0, sx: 58, sy: 1, sz: 58, color: 0x2d3240 }
   ];
 
-  const portals = worlds.map((world, index) => {
+  const portals = worlds.flatMap((world, index) => {
+    const progress = campaignState.worldProgress?.[index];
+    if (progress?.bossDefeated) return [];
+
     const angle = (index / worlds.length) * Math.PI * 2;
     const radius = 15;
-    return {
+    return [{
       worldIndex: index,
       name: world.name,
-      unlocked: campaignState.canAccessWorld(index),
+      unlocked: campaignState.worldProgress?.[index]?.bossDefeated
+        ? false
+        : (index !== GAME_CONFIG.finalWorldIndex
+            ? true
+            : (campaignState.keyCubes || 0) >= GAME_CONFIG.requiredKeyCubes),
       position: {
         x: Math.cos(angle) * radius,
         y: 2,
         z: Math.sin(angle) * radius
       },
       color: world.baseColor
-    };
+    }];
   });
 
   return {

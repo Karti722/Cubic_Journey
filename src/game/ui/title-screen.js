@@ -74,6 +74,22 @@ export function createTitleScreen({ onStart, onOpenControls }) {
   const playButton = document.createElement("button");
   playButton.textContent = "Play";
   styleButton(playButton, { primary: true });
+  playButton.style.padding = "0.95rem 1.5rem";
+  playButton.style.fontSize = "1rem";
+  playButton.style.letterSpacing = "0.06em";
+  playButton.style.textTransform = "uppercase";
+  playButton.style.boxShadow = "0 16px 32px rgba(0,0,0,0.28), 0 0 0 1px rgba(126, 231, 255, 0.18), 0 0 28px rgba(95, 168, 255, 0.28)";
+  playButton.style.transition = "transform 140ms ease, box-shadow 140ms ease, filter 140ms ease";
+  playButton.addEventListener("pointerenter", () => {
+    playButton.style.transform = "translateY(-1px) scale(1.02)";
+    playButton.style.filter = "brightness(1.08) saturate(1.08)";
+    playButton.style.boxShadow = "0 18px 38px rgba(0,0,0,0.3), 0 0 0 1px rgba(126, 231, 255, 0.26), 0 0 36px rgba(95, 168, 255, 0.38)";
+  });
+  playButton.addEventListener("pointerleave", () => {
+    playButton.style.transform = "translateY(0) scale(1)";
+    playButton.style.filter = "none";
+    playButton.style.boxShadow = "0 16px 32px rgba(0,0,0,0.28), 0 0 0 1px rgba(126, 231, 255, 0.18), 0 0 28px rgba(95, 168, 255, 0.28)";
+  });
   playButton.addEventListener("click", begin);
   launchBar.appendChild(playButton);
 
@@ -93,9 +109,6 @@ export function createTitleScreen({ onStart, onOpenControls }) {
     footerRow.appendChild(controlsButton);
   }
 
-  addEventListener("pointerdown", begin, { once: true });
-  addEventListener("keydown", onKeyDown, { once: true });
-
   function begin() {
     if (started) return;
     started = true;
@@ -106,18 +119,11 @@ export function createTitleScreen({ onStart, onOpenControls }) {
     }, 120);
   }
 
-  function onKeyDown(event) {
-    if (event.repeat) return;
-    begin();
-  }
-
   function destroy() {
     if (destroyed) return;
     destroyed = true;
     music.pause();
     root.remove();
-    removeEventListener("pointerdown", begin);
-    removeEventListener("keydown", onKeyDown);
   }
 
   return { destroy };

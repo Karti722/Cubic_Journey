@@ -82,7 +82,7 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
 
   const helpDock = document.createElement("div");
   helpDock.style.position = "fixed";
-  helpDock.style.right = "16px";
+  helpDock.style.right = "64px";
   helpDock.style.top = "16px";
   helpDock.style.zIndex = "13";
   helpDock.style.pointerEvents = "auto";
@@ -107,7 +107,7 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
     <span style="font-weight: 800; letter-spacing: 0.02em;">How to Play</span>
     <span style="display:flex; gap:8px; align-items:center;">
       <span data-help-arrow style="font-size: 1.1rem; line-height: 1;">▸</span>
-      <span data-help-exit style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.82;">Exit</span>
+      <span data-help-exit style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.82;">Open</span>
     </span>
   `;
   helpDock.appendChild(helpToggle);
@@ -139,7 +139,7 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
     helpPanel.style.transform = helpOpen ? "translateY(0)" : "translateY(-6px)";
     helpPanel.style.pointerEvents = helpOpen ? "auto" : "none";
     if (helpArrow) helpArrow.textContent = helpOpen ? "▾" : "▸";
-    if (helpExit) helpExit.textContent = helpOpen ? "Hide" : "Exit";
+    if (helpExit) helpExit.textContent = helpOpen ? "Close" : "Open";
   }
 
   helpToggle.addEventListener("click", () => setHelpOpen(!helpOpen));

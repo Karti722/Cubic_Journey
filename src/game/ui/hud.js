@@ -54,6 +54,28 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
   content.style.gap = "6px";
   panel.appendChild(content);
 
+  const portalPromptDock = document.createElement("div");
+  portalPromptDock.style.position = "fixed";
+  portalPromptDock.style.left = "50%";
+  portalPromptDock.style.bottom = "96px";
+  portalPromptDock.style.zIndex = "12";
+  portalPromptDock.style.pointerEvents = "none";
+  portalPromptDock.style.width = "min(420px, calc(100vw - 32px))";
+  portalPromptDock.style.transform = "translateX(-50%)";
+  uiElement.appendChild(portalPromptDock);
+
+  const portalPrompt = document.createElement("div");
+  portalPrompt.className = "cj-card";
+  portalPrompt.style.display = "none";
+  portalPrompt.style.padding = "10px 12px";
+  portalPrompt.style.background = "rgba(38, 28, 6, 0.94)";
+  portalPrompt.style.border = "1px solid rgba(255, 221, 117, 0.4)";
+  portalPrompt.style.boxShadow = "0 14px 30px rgba(0,0,0,0.32), 0 0 24px rgba(255, 221, 117, 0.18)";
+  portalPrompt.style.color = "#ffe79a";
+  portalPrompt.style.fontSize = "0.9rem";
+  portalPrompt.style.lineHeight = "1.35";
+  portalPromptDock.appendChild(portalPrompt);
+
   let campaignInfoExpanded = false;
   let hudCollapsed = false;
 
@@ -228,6 +250,13 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
     }
 
     content.replaceChildren(...rows, infoRow);
+
+    if (model.portalPrompt) {
+      portalPrompt.textContent = model.portalPrompt;
+      portalPrompt.style.display = "block";
+    } else {
+      portalPrompt.style.display = "none";
+    }
 
   }
 

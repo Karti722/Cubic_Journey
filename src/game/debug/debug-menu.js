@@ -1,6 +1,23 @@
 import { ensureUiTheme, styleButton, styleCard, styleHeading, styleOverlayRoot, stylePanel, styleSubtext } from "../ui/ui-theme.js";
 
-export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub, onUnlockAllSkills, onResetSkills, onMaxCurrency, onNearCompletion }) {
+export function createDebugMenu({
+  getModel,
+  onClose,
+  onTravelWorld,
+  onTravelHub,
+  onUnlockAllSkills,
+  onResetSkills,
+  onMaxCurrency,
+  onSetCollectibles,
+  onNearCompletion,
+  onFreshStart,
+  onMidCampaign,
+  onUnlockAllWorlds,
+  onFinalBossReady,
+  onTriggerEndCredits,
+  onToggleSkill,
+  onSetWorldState
+}) {
   ensureUiTheme();
 
   const root = document.createElement("div");
@@ -58,15 +75,74 @@ export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub,
     });
     hubButton.style.background = "#184f3a";
 
-    if (typeof onNearCompletion === "function") {
-      const nearCompleteButton = addButton(controls, "Near Completion", () => {
-        onNearCompletion();
-        close();
-      });
-      nearCompleteButton.style.background = "#5b4a16";
+    const stats = document.createElement("div");
+    stats.style.marginTop = "10px";
+    stats.style.fontSize = "13px";
+    stats.style.opacity = "0.86";
+    stats.textContent = `Stages: ${model.completedStages || 0}/${model.totalStages || 0} | Cubes: ${model.keyCubes || 0}`;
+    panel.appendChild(stats);
+
+    if (
+      typeof onFreshStart === "function"
+      || typeof onMidCampaign === "function"
+      || typeof onUnlockAllWorlds === "function"
+      || typeof onNearCompletion === "function"
+      || typeof onFinalBossReady === "function"
+      || typeof onTriggerEndCredits === "function"
+    ) {
+      const progressLab = document.createElement("div");
+      progressLab.style.marginTop = "16px";
+      styleCard(progressLab, { padding: "12px" });
+      panel.appendChild(progressLab);
+
+      const progressTitle = document.createElement("div");
+      progressTitle.textContent = "Progress Lab";
+      progressTitle.style.fontWeight = "700";
+      progressTitle.style.marginBottom = "10px";
+      progressLab.appendChild(progressTitle);
+
+      const progressButtons = document.createElement("div");
+      progressButtons.style.display = "flex";
+      progressButtons.style.gap = "10px";
+      progressButtons.style.flexWrap = "wrap";
+      progressLab.appendChild(progressButtons);
+
+      if (typeof onFreshStart === "function") {
+        addButton(progressButtons, "Fresh Start", () => onFreshStart());
+      }
+
+      if (typeof onMidCampaign === "function") {
+        addButton(progressButtons, "Mid Campaign", () => onMidCampaign());
+      }
+
+      if (typeof onUnlockAllWorlds === "function") {
+        addButton(progressButtons, "Unlock Worlds", () => onUnlockAllWorlds());
+      }
+
+      if (typeof onNearCompletion === "function") {
+        const nearCompleteButton = addButton(progressButtons, "Near Completion", () => onNearCompletion());
+        nearCompleteButton.style.background = "#5b4a16";
+      }
+
+      if (typeof onFinalBossReady === "function") {
+        addButton(progressButtons, "Final Boss Ready", () => onFinalBossReady());
+      }
+
+      if (typeof onTriggerEndCredits === "function") {
+        const creditsButton = addButton(progressButtons, "Trigger End Credits", () => {
+          onTriggerEndCredits();
+          close();
+        });
+        creditsButton.style.background = "#6e1f1f";
+      }
     }
 
-    if (typeof onUnlockAllSkills === "function" || typeof onResetSkills === "function" || typeof onMaxCurrency === "function") {
+    if (
+      typeof onUnlockAllSkills === "function"
+      || typeof onResetSkills === "function"
+      || typeof onMaxCurrency === "function"
+      || typeof onSetCollectibles === "function"
+    ) {
       const skillLab = document.createElement("div");
       skillLab.style.marginTop = "18px";
       styleCard(skillLab, { padding: "12px" });
@@ -95,6 +171,30 @@ export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub,
       if (typeof onMaxCurrency === "function") {
         addButton(skillButtons, "Max Currency", () => onMaxCurrency());
       }
+
+      if (typeof onSetCollectibles === "function") {
+        addButton(skillButtons, "Set Collectibles", () => {
+          const raw = window.prompt("Set collectible count (coins):", String(model.currency || 0));
+          if (raw === null) return;
+          const parsed = Number.parseInt(raw, 10);
+          if (!Number.isFinite(parsed)) return;
+          onSetCollectibles(parsed);
+        });
+      }
+
+      if (typeof onToggleSkill === "function" && Array.isArray(model.skillEntries)) {
+        const toggleGrid = document.createElement("div");
+        toggleGrid.style.display = "grid";
+        toggleGrid.style.gridTemplateColumns = "repeat(auto-fit, minmax(180px, 1fr))";
+        toggleGrid.style.gap = "8px";
+        toggleGrid.style.marginTop = "10px";
+        skillLab.appendChild(toggleGrid);
+
+        model.skillEntries.forEach(skill => {
+          const toggleButton = addButton(toggleGrid, `${skill.enabled ? "Disable" : "Enable"} ${skill.name}`, () => onToggleSkill(skill.id));
+          toggleButton.style.background = skill.enabled ? "#5e2a2a" : "#23503c";
+        });
+      }
     }
 
     const worldsWrap = document.createElement("div");
@@ -118,8 +218,28 @@ export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub,
       info.style.fontSize = "13px";
       info.style.opacity = "0.85";
       info.style.marginBottom = "8px";
-      info.textContent = `Stages: ${world.stageCount} | Boss stage: ${world.bossStage + 1}`;
+      info.textContent = `Stages: ${world.stageCount} | Boss stage: ${world.bossStage + 1} | ${world.bossDefeated ? "Boss defeated" : "Boss active"}`;
       card.appendChild(info);
+
+      if (typeof onSetWorldState === "function") {
+        const worldStateButtons = document.createElement("div");
+        worldStateButtons.style.display = "flex";
+        worldStateButtons.style.gap = "6px";
+        worldStateButtons.style.marginBottom = "8px";
+        worldStateButtons.style.flexWrap = "wrap";
+
+        const freshButton = addButton(worldStateButtons, "Wipe", () => onSetWorldState(world.index, "fresh"));
+        freshButton.style.padding = "5px 8px";
+
+        const unlockButton = addButton(worldStateButtons, "Unlock", () => onSetWorldState(world.index, "unlocked"));
+        unlockButton.style.padding = "5px 8px";
+
+        const clearButton = addButton(worldStateButtons, "Boss Clear", () => onSetWorldState(world.index, "bossCleared"));
+        clearButton.style.padding = "5px 8px";
+        clearButton.style.background = "#5b4a16";
+
+        card.appendChild(worldStateButtons);
+      }
 
       const stageButtons = document.createElement("div");
       stageButtons.style.display = "grid";

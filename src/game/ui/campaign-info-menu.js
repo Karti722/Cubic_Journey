@@ -9,7 +9,6 @@ export function createCampaignInfoMenu({ getModel, onClose }) {
   document.body.appendChild(root);
 
   let isOpen = false;
-  let expanded = false;
 
   function render() {
     const model = getModel();
@@ -40,15 +39,6 @@ export function createCampaignInfoMenu({ getModel, onClose }) {
     actions.style.alignItems = "center";
     header.appendChild(actions);
 
-    const expandButton = document.createElement("button");
-    expandButton.textContent = expanded ? "Collapse" : "Expand";
-    styleButton(expandButton, { compact: true });
-    expandButton.addEventListener("click", () => {
-      expanded = !expanded;
-      render();
-    });
-    actions.appendChild(expandButton);
-
     const closeButton = document.createElement("button");
     closeButton.textContent = "Exit";
     styleButton(closeButton, { compact: true, danger: true });
@@ -62,19 +52,6 @@ export function createCampaignInfoMenu({ getModel, onClose }) {
     subtitle.textContent = model.mode === "hub" ? "Current hub status and campaign notes." : `Current world: ${model.worldName}`;
     styleSubtext(subtitle, { marginBottom: "14px" });
     panel.appendChild(subtitle);
-
-    const collapsedHint = document.createElement("div");
-    collapsedHint.className = "cj-card";
-    collapsedHint.style.padding = "12px";
-    collapsedHint.innerHTML = `
-      <div class="cj-kicker" style="margin-bottom: 6px;">Campaign Progress</div>
-      <div style="color: rgba(255,255,255,0.82); line-height: 1.45;">This modal opens collapsed by default. Expand it when you want the story, progress, and objectives.</div>
-    `;
-    panel.appendChild(collapsedHint);
-
-    if (!expanded) {
-      return;
-    }
 
     const storyCard = document.createElement("div");
     styleCard(storyCard, { padding: "14px" });
@@ -131,7 +108,6 @@ export function createCampaignInfoMenu({ getModel, onClose }) {
 
   function close() {
     isOpen = false;
-    expanded = false;
     root.style.display = "none";
   }
 

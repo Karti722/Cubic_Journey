@@ -520,6 +520,78 @@ export function startGame(uiElement) {
     return false;
   }
 
+  function refreshAfterDebugMutation({ reloadHub = true } = {}) {
+    campaign.state.finalWin = false;
+
+    if (reloadHub) {
+      campaign.enterHub();
+      loadHub();
+    }
+
+    persistProgress();
+    hud.update(buildHudModel());
+    worldMenu.render();
+    pauseMenu.render();
+    debugMenu.render();
+  }
+
+  function recalculateProgressTotals({ forceKeyCubes = null } = {}) {
+    let completed = 0;
+    let cubes = 0;
+
+    campaign.state.worldProgress.forEach((progress, index) => {
+      const world = GAME_CONFIG.campaignWorlds[index];
+      const stageCount = getWorldStageCount(world);
+      const completedStagesInWorld = Math.max(0, Math.min(stageCount, progress.highestCompletedStage + 1));
+      completed += completedStagesInWorld;
+
+      if (progress.bossDefeated && world.keyCubeReward) {
+        progress.keyCubeClaimed = true;
+      }
+
+      if (progress.keyCubeClaimed && world.keyCubeReward) {
+        cubes += 1;
+      }
+    });
+
+    campaign.state.totalCompletedStages = completed;
+    campaign.state.keyCubes = forceKeyCubes === null
+      ? Math.min(cubes, GAME_CONFIG.requiredKeyCubes)
+      : Math.max(0, Math.min(forceKeyCubes, GAME_CONFIG.requiredKeyCubes));
+  }
+
+  function setWorldProgressState(worldIndex, stateType) {
+    const world = GAME_CONFIG.campaignWorlds[worldIndex];
+    const progress = campaign.state.worldProgress[worldIndex];
+    if (!world || !progress) return;
+
+    const stageCount = getWorldStageCount(world);
+    const bossStage = stageCount - 1;
+
+    if (stateType === "fresh") {
+      progress.highestUnlockedStage = 0;
+      progress.highestCompletedStage = -1;
+      progress.bossDefeated = false;
+      progress.keyCubeClaimed = false;
+      return;
+    }
+
+    if (stateType === "unlocked") {
+      progress.highestUnlockedStage = bossStage;
+      progress.highestCompletedStage = Math.max(progress.highestCompletedStage, bossStage - 1);
+      progress.bossDefeated = false;
+      progress.keyCubeClaimed = false;
+      return;
+    }
+
+    if (stateType === "bossCleared") {
+      progress.highestUnlockedStage = bossStage;
+      progress.highestCompletedStage = bossStage;
+      progress.bossDefeated = true;
+      progress.keyCubeClaimed = !!world.keyCubeReward;
+    }
+  }
+
   const debugMenu = createDebugMenu({
     getModel: () => ({
       currentLabel: campaign.state.mode === "hub"
@@ -527,13 +599,23 @@ export function startGame(uiElement) {
         : `${GAME_CONFIG.campaignWorlds[campaign.state.worldIndex]?.name || "Unknown"} - Stage ${campaign.state.stageIndex + 1}`,
       currency: campaign.state.currency,
       skillCount: countOwnedSkills(campaign.state.skills),
+      completedStages: campaign.state.totalCompletedStages,
+      totalStages: campaign.state.totalStages,
+      keyCubes: campaign.state.keyCubes,
+      skillEntries: SKILL_DEFINITIONS.map(skill => ({
+        id: skill.id,
+        name: skill.name,
+        enabled: Boolean(campaign.state.skills[skill.id])
+      })),
       worlds: GAME_CONFIG.campaignWorlds.map((world, index) => {
         const stageCount = getWorldStageCount(world);
+        const progress = campaign.state.worldProgress[index];
         return {
           index,
           name: world.name,
           stageCount,
-          bossStage: stageCount - 1
+          bossStage: stageCount - 1,
+          bossDefeated: Boolean(progress?.bossDefeated)
         };
       })
     }),
@@ -556,50 +638,93 @@ export function startGame(uiElement) {
         campaign.unlockSkill(skillId);
       }
       campaign.state.currency = Math.max(campaign.state.currency, 999);
-      persistProgress();
-      pauseMenu.render();
-      debugMenu.render();
+      refreshAfterDebugMutation({ reloadHub: false });
     },
     onResetSkills: () => {
       for (const skillId of Object.keys(campaign.state.skills)) {
         campaign.state.skills[skillId] = false;
       }
-      persistProgress();
-      pauseMenu.render();
-      debugMenu.render();
+      refreshAfterDebugMutation({ reloadHub: false });
     },
     onMaxCurrency: () => {
       campaign.state.currency = 999;
-      persistProgress();
-      pauseMenu.render();
-      debugMenu.render();
+      refreshAfterDebugMutation({ reloadHub: false });
     },
-    onNearCompletion: () => {
-      campaign.state.keyCubes = GAME_CONFIG.requiredKeyCubes;
-      campaign.state.totalCompletedStages = campaign.state.totalStages - 1;
-      campaign.state.currency = 999;
-      campaign.state.finalWin = false;
-
-      campaign.state.worldProgress.forEach((progress, index) => {
-        const world = GAME_CONFIG.campaignWorlds[index];
-        const stageCount = getWorldStageCount(world);
-        progress.highestUnlockedStage = stageCount - 1;
-        progress.highestCompletedStage = stageCount - 2;
-        progress.keyCubeClaimed = !!world.keyCubeReward;
-        progress.bossDefeated = index !== GAME_CONFIG.finalWorldIndex;
+    onSetCollectibles: amount => {
+      campaign.state.currency = Math.max(0, Math.floor(amount));
+      refreshAfterDebugMutation({ reloadHub: false });
+    },
+    onFreshStart: () => {
+      const fresh = createDefaultCampaignSave(GAME_CONFIG.campaignWorlds);
+      campaign.state.worldProgress = structuredClone(fresh.worldProgress);
+      campaign.state.skills = structuredClone(fresh.skills);
+      campaign.state.currency = fresh.currency;
+      campaign.state.totalCompletedStages = fresh.totalCompletedStages;
+      campaign.state.keyCubes = fresh.keyCubes;
+      refreshAfterDebugMutation();
+    },
+    onMidCampaign: () => {
+      campaign.state.worldProgress.forEach((_, index) => {
+        if (index <= 1) {
+          setWorldProgressState(index, "bossCleared");
+        } else if (index === 2) {
+          setWorldProgressState(index, "unlocked");
+        } else {
+          setWorldProgressState(index, "fresh");
+        }
       });
 
-      const finalWorldProgress = campaign.state.worldProgress[GAME_CONFIG.finalWorldIndex];
-      if (finalWorldProgress) {
-        finalWorldProgress.highestUnlockedStage = getWorldStageCount(GAME_CONFIG.campaignWorlds[GAME_CONFIG.finalWorldIndex]) - 1;
-        finalWorldProgress.highestCompletedStage = finalWorldProgress.highestUnlockedStage - 1;
-        finalWorldProgress.keyCubeClaimed = true;
-        finalWorldProgress.bossDefeated = false;
-      }
+      campaign.state.currency = Math.max(campaign.state.currency, 120);
+      recalculateProgressTotals();
+      refreshAfterDebugMutation();
+    },
+    onUnlockAllWorlds: () => {
+      campaign.state.worldProgress.forEach((_, index) => setWorldProgressState(index, "unlocked"));
+      recalculateProgressTotals({ forceKeyCubes: GAME_CONFIG.requiredKeyCubes });
+      refreshAfterDebugMutation();
+    },
+    onNearCompletion: () => {
+      campaign.state.worldProgress.forEach((_, index) => {
+        if (index === GAME_CONFIG.finalWorldIndex) {
+          setWorldProgressState(index, "unlocked");
+        } else {
+          setWorldProgressState(index, "bossCleared");
+        }
+      });
 
+      recalculateProgressTotals({ forceKeyCubes: GAME_CONFIG.requiredKeyCubes });
+      campaign.state.currency = 999;
+
+      refreshAfterDebugMutation();
+    },
+    onFinalBossReady: () => {
+      campaign.state.worldProgress.forEach((_, index) => {
+        if (index === GAME_CONFIG.finalWorldIndex) {
+          setWorldProgressState(index, "unlocked");
+        } else {
+          setWorldProgressState(index, "bossCleared");
+        }
+      });
+
+      recalculateProgressTotals({ forceKeyCubes: GAME_CONFIG.requiredKeyCubes });
+      refreshAfterDebugMutation();
+    },
+    onTriggerEndCredits: () => {
+      setWorldProgressState(GAME_CONFIG.finalWorldIndex, "bossCleared");
+      recalculateProgressTotals({ forceKeyCubes: GAME_CONFIG.requiredKeyCubes });
+      campaign.state.finalWin = true;
       persistProgress();
-      pauseMenu.render();
-      debugMenu.render();
+      playEndCredits();
+    },
+    onToggleSkill: skillId => {
+      if (!(skillId in campaign.state.skills)) return;
+      campaign.state.skills[skillId] = !campaign.state.skills[skillId];
+      refreshAfterDebugMutation({ reloadHub: false });
+    },
+    onSetWorldState: (worldIndex, stateType) => {
+      setWorldProgressState(worldIndex, stateType);
+      recalculateProgressTotals();
+      refreshAfterDebugMutation();
     }
   });
 
@@ -785,6 +910,7 @@ export function startGame(uiElement) {
     }
 
     if (physics.fell) {
+      triggerDamageFeedback(elapsed);
       player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
       velocity.set(0, 0, 0);
       resetAbilityState(ability, PLAYER_CONFIG.extraAirJumps);

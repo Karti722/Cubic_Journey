@@ -76,6 +76,49 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
   portalPrompt.style.lineHeight = "1.35";
   portalPromptDock.appendChild(portalPrompt);
 
+  const centerBannerDock = document.createElement("div");
+  centerBannerDock.style.position = "fixed";
+  centerBannerDock.style.left = "50%";
+  centerBannerDock.style.top = "50%";
+  centerBannerDock.style.transform = "translate(-50%, -50%)";
+  centerBannerDock.style.zIndex = "14";
+  centerBannerDock.style.pointerEvents = "none";
+  centerBannerDock.style.width = "min(560px, calc(100vw - 40px))";
+  uiElement.appendChild(centerBannerDock);
+
+  const centerBanner = document.createElement("div");
+  centerBanner.className = "cj-card";
+  centerBanner.style.display = "none";
+  centerBanner.style.padding = "16px 18px";
+  centerBanner.style.background = "rgba(8, 14, 22, 0.92)";
+  centerBanner.style.border = "1px solid rgba(126, 231, 255, 0.22)";
+  centerBanner.style.boxShadow = "0 20px 52px rgba(0,0,0,0.42)";
+  centerBanner.style.textAlign = "center";
+  centerBanner.style.letterSpacing = "0.04em";
+  centerBanner.style.textTransform = "uppercase";
+  centerBanner.style.color = "white";
+  centerBanner.style.opacity = "0";
+  centerBanner.style.transform = "translateY(10px) scale(0.98)";
+  centerBanner.style.transition = "opacity 220ms ease, transform 220ms ease";
+  centerBannerDock.appendChild(centerBanner);
+
+  const centerBannerTitle = document.createElement("div");
+  centerBannerTitle.style.fontSize = "0.76rem";
+  centerBannerTitle.style.fontWeight = "800";
+  centerBannerTitle.style.color = "rgba(255,255,255,0.68)";
+  centerBannerTitle.style.marginBottom = "8px";
+  centerBanner.appendChild(centerBannerTitle);
+
+  const centerBannerBody = document.createElement("div");
+  centerBannerBody.style.fontSize = "clamp(1.6rem, 4vw, 2.6rem)";
+  centerBannerBody.style.fontWeight = "900";
+  centerBannerBody.style.lineHeight = "1.1";
+  centerBannerBody.style.color = "#fff2c4";
+  centerBanner.appendChild(centerBannerBody);
+
+  let centerBannerTimer = null;
+  let lastBossBanner = "";
+
   let campaignInfoExpanded = false;
   let hudCollapsed = false;
 
@@ -180,7 +223,6 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
       if (model.finalWin) rows.push(makeAlert("Campaign complete!", true));
     } else {
       rows.push(makeRow("Objective", model.isBossStage ? "Boss stage" : "Reach the goal cube"));
-      if (model.bossName) rows.push(makeAlert(`Boss: ${model.bossName}`));
     }
 
     const infoRow = document.createElement("div");
@@ -258,6 +300,51 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
       portalPrompt.style.display = "none";
     }
 
+    updateBossBanner(model);
+
+  }
+
+  function updateBossBanner(model) {
+    const bossText = model.mode !== "hub" && model.bossName ? model.bossName : "";
+
+    if (!bossText || bossText === lastBossBanner) {
+      if (!bossText && centerBanner.style.display !== "none") {
+        hideBossBanner();
+      }
+      return;
+    }
+
+    lastBossBanner = bossText;
+    centerBannerTitle.textContent = "Boss Encounter";
+    centerBannerBody.textContent = bossText;
+    centerBanner.style.display = "block";
+    requestAnimationFrame(() => {
+      centerBanner.style.opacity = "1";
+      centerBanner.style.transform = "translateY(0) scale(1)";
+    });
+
+    if (centerBannerTimer) {
+      clearTimeout(centerBannerTimer);
+    }
+
+    centerBannerTimer = setTimeout(() => {
+      hideBossBanner();
+    }, 3200);
+  }
+
+  function hideBossBanner() {
+    lastBossBanner = "";
+    centerBanner.style.opacity = "0";
+    centerBanner.style.transform = "translateY(10px) scale(0.98)";
+    if (centerBannerTimer) {
+      clearTimeout(centerBannerTimer);
+      centerBannerTimer = null;
+    }
+    setTimeout(() => {
+      if (centerBanner.style.opacity === "0") {
+        centerBanner.style.display = "none";
+      }
+    }, 240);
   }
 
   setHudCollapsed(false);

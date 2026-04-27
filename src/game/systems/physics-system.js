@@ -60,7 +60,7 @@ export function stepPlayerPhysics({
     velocity.z = ability.wallNormal.z * (config.wallJumpPush * 0.22);
   }
 
-  if (input.dashPressed && !grounded && ability.dashAvailable) {
+  if (input.dashPressed && ability.dashAvailable) {
     const direction = normalize2D(input.dashDirection.x, input.dashDirection.z);
     const dashSpeed = hasDashBoost ? config.dashSpeed * 1.18 : config.dashSpeed;
     velocity.x = direction.x * dashSpeed;

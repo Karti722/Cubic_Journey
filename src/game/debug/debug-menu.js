@@ -15,13 +15,29 @@ export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub,
     root.innerHTML = "";
 
     const panel = document.createElement("div");
-    stylePanel(panel, { maxWidth: "1180px", padding: "22px" });
+    stylePanel(panel, { maxWidth: "1180px", padding: "20px" });
+    panel.style.background = "rgba(10, 10, 20, 0.97)";
+    panel.style.border = "1px solid rgba(255, 122, 202, 0.24)";
+    panel.style.boxShadow = "0 28px 70px rgba(0,0,0,0.55)";
     root.appendChild(panel);
+
+    const header = document.createElement("div");
+    header.style.display = "flex";
+    header.style.justifyContent = "space-between";
+    header.style.alignItems = "center";
+    header.style.gap = "10px";
+    panel.appendChild(header);
 
     const title = document.createElement("div");
     title.textContent = "Debug Menu";
     styleHeading(title, { size: "clamp(2rem, 4vw, 3rem)", marginBottom: "8px" });
-    panel.appendChild(title);
+    header.appendChild(title);
+
+    const closeButton = addButton(header, "Exit", () => {
+      onClose();
+      close();
+    });
+    closeButton.style.background = "#41255f";
 
     const subtitle = document.createElement("div");
     subtitle.style.marginTop = "8px";
@@ -35,12 +51,6 @@ export function createDebugMenu({ getModel, onClose, onTravelWorld, onTravelHub,
     controls.style.marginTop = "14px";
     controls.style.flexWrap = "wrap";
     panel.appendChild(controls);
-
-    const closeButton = addButton(controls, "Close Debug", () => {
-      onClose();
-      close();
-    });
-    closeButton.style.background = "#41255f";
 
     const hubButton = addButton(controls, "Travel Hub", () => {
       onTravelHub();

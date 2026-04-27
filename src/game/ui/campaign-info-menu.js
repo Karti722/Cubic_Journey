@@ -4,29 +4,77 @@ export function createCampaignInfoMenu({ getModel, onClose }) {
   ensureUiTheme();
 
   const root = document.createElement("div");
-  styleOverlayRoot(root, { zIndex: 35, background: "radial-gradient(circle at 50% 12%, rgba(95, 168, 255, 0.12), rgba(2, 4, 10, 0.94) 58%), linear-gradient(180deg, rgba(2, 4, 10, 0.8), rgba(0, 0, 0, 0.95))" });
+  styleOverlayRoot(root, { zIndex: 35, background: "radial-gradient(circle at 50% 12%, rgba(95, 168, 255, 0.12), rgba(2, 4, 10, 0.94) 58%), linear-gradient(180deg, rgba(2, 4, 10, 0.82), rgba(0, 0, 0, 0.96))" });
   root.style.display = "none";
   document.body.appendChild(root);
 
   let isOpen = false;
+  let expanded = false;
 
   function render() {
     const model = getModel();
     root.innerHTML = "";
 
     const panel = document.createElement("div");
-    stylePanel(panel, { maxWidth: "760px", padding: "18px" });
+    stylePanel(panel, { maxWidth: "780px", padding: "16px" });
+    panel.style.background = "rgba(10, 16, 28, 0.96)";
+    panel.style.border = "1px solid rgba(126, 231, 255, 0.2)";
+    panel.style.boxShadow = "0 28px 70px rgba(0,0,0,0.5)";
     root.appendChild(panel);
+
+    const header = document.createElement("div");
+    header.style.display = "flex";
+    header.style.justifyContent = "space-between";
+    header.style.alignItems = "center";
+    header.style.gap = "10px";
+    panel.appendChild(header);
 
     const title = document.createElement("div");
     title.textContent = "Campaign Overview";
     styleHeading(title, { size: "1.9rem", marginBottom: "6px" });
-    panel.appendChild(title);
+    header.appendChild(title);
+
+    const actions = document.createElement("div");
+    actions.style.display = "flex";
+    actions.style.gap = "8px";
+    actions.style.alignItems = "center";
+    header.appendChild(actions);
+
+    const expandButton = document.createElement("button");
+    expandButton.textContent = expanded ? "Collapse" : "Expand";
+    styleButton(expandButton, { compact: true });
+    expandButton.addEventListener("click", () => {
+      expanded = !expanded;
+      render();
+    });
+    actions.appendChild(expandButton);
+
+    const closeButton = document.createElement("button");
+    closeButton.textContent = "Exit";
+    styleButton(closeButton, { compact: true, danger: true });
+    closeButton.addEventListener("click", () => {
+      close();
+      if (typeof onClose === "function") onClose();
+    });
+    actions.appendChild(closeButton);
 
     const subtitle = document.createElement("div");
     subtitle.textContent = model.mode === "hub" ? "Current hub status and campaign notes." : `Current world: ${model.worldName}`;
     styleSubtext(subtitle, { marginBottom: "14px" });
     panel.appendChild(subtitle);
+
+    const collapsedHint = document.createElement("div");
+    collapsedHint.className = "cj-card";
+    collapsedHint.style.padding = "12px";
+    collapsedHint.innerHTML = `
+      <div class="cj-kicker" style="margin-bottom: 6px;">Campaign Progress</div>
+      <div style="color: rgba(255,255,255,0.82); line-height: 1.45;">This modal opens collapsed by default. Expand it when you want the story, progress, and objectives.</div>
+    `;
+    panel.appendChild(collapsedHint);
+
+    if (!expanded) {
+      return;
+    }
 
     const storyCard = document.createElement("div");
     styleCard(storyCard, { padding: "14px" });
@@ -65,14 +113,14 @@ export function createCampaignInfoMenu({ getModel, onClose }) {
     buttonRow.style.marginTop = "16px";
     panel.appendChild(buttonRow);
 
-    const closeButton = document.createElement("button");
-    closeButton.textContent = "Close";
-    styleButton(closeButton, { primary: true });
-    closeButton.addEventListener("click", () => {
+    const closeExpandedButton = document.createElement("button");
+    closeExpandedButton.textContent = "Close";
+    styleButton(closeExpandedButton, { primary: true });
+    closeExpandedButton.addEventListener("click", () => {
       close();
       if (typeof onClose === "function") onClose();
     });
-    buttonRow.appendChild(closeButton);
+    buttonRow.appendChild(closeExpandedButton);
   }
 
   function open() {
@@ -83,6 +131,7 @@ export function createCampaignInfoMenu({ getModel, onClose }) {
 
   function close() {
     isOpen = false;
+    expanded = false;
     root.style.display = "none";
   }
 

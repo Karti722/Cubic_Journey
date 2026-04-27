@@ -91,6 +91,7 @@ export function startGame(uiElement) {
   let moveEffectCooldown = 0;
   let worldLoadToken = 0;
   let isWorldLoading = false;
+  const loadingScreenDelayMs = 220;
 
   let campaignInfoReturnToPause = false;
 
@@ -107,7 +108,12 @@ export function startGame(uiElement) {
   function loadDefinition(definition, loadingMessage = "Building the world...") {
     const loadToken = ++worldLoadToken;
     isWorldLoading = true;
-    loadingScreen.show(loadingMessage);
+    let loadingShown = false;
+    const loadingTimer = setTimeout(() => {
+      if (loadToken !== worldLoadToken || !isWorldLoading) return;
+      loadingScreen.show(loadingMessage);
+      loadingShown = true;
+    }, loadingScreenDelayMs);
 
     setTimeout(() => {
       if (loadToken !== worldLoadToken) return;
@@ -127,7 +133,8 @@ export function startGame(uiElement) {
       setMusicForCurrentState();
       hud.update(buildHudModel());
       isWorldLoading = false;
-      loadingScreen.hide();
+      clearTimeout(loadingTimer);
+      if (loadingShown) loadingScreen.hide();
     }, 0);
   }
 

@@ -16,13 +16,32 @@ export function createShopMenu({ getModel, onBuySkill, onClose }) {
     root.innerHTML = "";
 
     const panel = document.createElement("div");
-    stylePanel(panel, { maxWidth: "1100px", padding: "22px" });
+    stylePanel(panel, { maxWidth: "1100px", padding: "20px" });
+    panel.style.background = "rgba(10, 16, 28, 0.96)";
+    panel.style.border = "1px solid rgba(255, 213, 108, 0.24)";
+    panel.style.boxShadow = "0 28px 70px rgba(0,0,0,0.5)";
     root.appendChild(panel);
+
+    const header = document.createElement("div");
+    header.style.display = "flex";
+    header.style.justifyContent = "space-between";
+    header.style.alignItems = "center";
+    header.style.gap = "10px";
+    panel.appendChild(header);
 
     const title = document.createElement("div");
     title.textContent = "Skill Shop";
     styleHeading(title, { size: "clamp(2rem, 4vw, 3rem)", marginBottom: "8px" });
-    panel.appendChild(title);
+    header.appendChild(title);
+
+    const closeButton = document.createElement("button");
+    closeButton.textContent = "Exit";
+    styleButton(closeButton, { compact: true, danger: true });
+    closeButton.addEventListener("click", () => {
+      close();
+      if (typeof onClose === "function") onClose();
+    });
+    header.appendChild(closeButton);
 
     const currency = document.createElement("div");
     currency.textContent = `Coins: ${model.currency}`;

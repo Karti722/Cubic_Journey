@@ -15,80 +15,108 @@ export function createTitleScreen({ onStart, onOpenControls }) {
   music.volume = 0.5;
   music.preload = "auto";
 
+  let destroyed = false;
   let started = false;
-  let startTriggered = false;
 
   const panel = document.createElement("div");
-  stylePanel(panel, { maxWidth: "720px", padding: "22px 24px", accent: "rgba(95, 168, 255, 0.18)" });
-  panel.style.textAlign = "left";
+  stylePanel(panel, { maxWidth: "760px", padding: "18px", accent: "rgba(95, 168, 255, 0.16)" });
+  panel.style.display = "grid";
+  panel.style.gap = "14px";
   root.appendChild(panel);
 
-  const headerRow = document.createElement("div");
-  headerRow.style.display = "flex";
-  headerRow.style.justifyContent = "space-between";
-  headerRow.style.alignItems = "center";
-  headerRow.style.gap = "12px";
-  headerRow.style.marginBottom = "16px";
-  panel.appendChild(headerRow);
+  const topRow = document.createElement("div");
+  topRow.style.display = "flex";
+  topRow.style.justifyContent = "space-between";
+  topRow.style.alignItems = "center";
+  topRow.style.gap = "10px";
+  panel.appendChild(topRow);
 
-  const kicker = document.createElement("div");
-  kicker.textContent = "Steam-style campaign launcher";
-  kicker.className = "cj-chip";
-  headerRow.appendChild(kicker);
+  const badge = document.createElement("div");
+  badge.className = "cj-chip";
+  badge.textContent = "Browser game";
+  topRow.appendChild(badge);
 
-  const chips = document.createElement("div");
-  chips.style.display = "flex";
-  chips.style.gap = "8px";
-  chips.style.flexWrap = "wrap";
-  chips.style.justifyContent = "flex-end";
-  headerRow.appendChild(chips);
-
-  ["3D platformer", "Boss stages", "Remappable controls"].forEach(label => {
-    const chip = document.createElement("div");
-    chip.className = "cj-chip";
-    chip.textContent = label;
-    chips.appendChild(chip);
-  });
+  const tinyHint = document.createElement("div");
+  tinyHint.className = "cj-chip";
+  tinyHint.textContent = "Best played full screen";
+  topRow.appendChild(tinyHint);
 
   const title = document.createElement("div");
   title.textContent = "Cubic Journey";
-  styleHeading(title, { align: "left", size: "clamp(2.2rem, 4vw, 3.8rem)" });
-  title.style.marginTop = "0";
+  styleHeading(title, { align: "left", size: "clamp(3rem, 6vw, 4.6rem)" });
+  title.style.margin = "0";
   panel.appendChild(title);
 
   const subtitle = document.createElement("div");
-  subtitle.textContent = "A fast 3D platform campaign with glowing worlds, boss stages, and compact Steam-like menus.";
-  styleSubtext(subtitle, { align: "left", marginBottom: "0", fontSize: "0.95rem" });
-  subtitle.style.maxWidth = "56ch";
-  subtitle.style.marginTop = "8px";
+  subtitle.textContent = "Press any button to play.";
+  styleSubtext(subtitle, { align: "left", marginBottom: "0", fontSize: "1rem" });
+  subtitle.style.maxWidth = "44ch";
   panel.appendChild(subtitle);
+
+  const launchBar = document.createElement("div");
+  launchBar.className = "cj-card";
+  launchBar.style.padding = "14px";
+  launchBar.style.display = "flex";
+  launchBar.style.justifyContent = "space-between";
+  launchBar.style.alignItems = "center";
+  launchBar.style.gap = "12px";
+  launchBar.style.flexWrap = "wrap";
+  panel.appendChild(launchBar);
 
   const prompt = document.createElement("div");
   prompt.textContent = "Press any key, click, or tap to start";
-  prompt.style.marginTop = "16px";
-  prompt.className = "cj-chip";
-  prompt.style.padding = "0.55rem 0.85rem";
-  prompt.style.fontWeight = "700";
-  prompt.style.animation = "cj-pop-in 340ms ease both, cj-glow-pulse 1.6s ease-in-out infinite alternate";
-  panel.appendChild(prompt);
+  prompt.style.fontWeight = "800";
+  prompt.style.letterSpacing = "0.03em";
+  prompt.style.textTransform = "uppercase";
+  prompt.style.fontSize = "0.82rem";
+  launchBar.appendChild(prompt);
 
-  const row = document.createElement("div");
-  row.style.marginTop = "14px";
-  row.style.display = "flex";
-  row.style.justifyContent = "flex-start";
-  row.style.gap = "10px";
-  row.style.flexWrap = "wrap";
-  panel.appendChild(row);
+  const playButton = document.createElement("button");
+  playButton.textContent = "Play";
+  styleButton(playButton, { primary: true });
+  playButton.addEventListener("click", begin);
+  launchBar.appendChild(playButton);
+
+  const footerRow = document.createElement("div");
+  footerRow.style.display = "flex";
+  footerRow.style.justifyContent = "space-between";
+  footerRow.style.alignItems = "center";
+  footerRow.style.gap = "10px";
+  footerRow.style.flexWrap = "wrap";
+  panel.appendChild(footerRow);
+
+  const sourceText = document.createElement("div");
+  sourceText.className = "cj-subtitle";
+  sourceText.style.maxWidth = "44ch";
+  sourceText.textContent = "This is the GitHub repo for Cubic Journey. Download the zip, make your own version, remix it, or do whatever you want with this codebase.";
+  footerRow.appendChild(sourceText);
 
   if (typeof onOpenControls === "function") {
-    addButton(row, "Controls", () => {
-      onOpenControls();
-    });
+    const controlsButton = document.createElement("button");
+    controlsButton.textContent = "Controls";
+    styleButton(controlsButton, { primary: false });
+    controlsButton.addEventListener("click", onOpenControls);
+    footerRow.appendChild(controlsButton);
   }
 
+  const sourceLink = document.createElement("a");
+  sourceLink.href = "https://github.com/Karti722/Cubic_Journey";
+  sourceLink.target = "_blank";
+  sourceLink.rel = "noreferrer";
+  sourceLink.textContent = "Open source repo";
+  sourceLink.className = "cj-chip";
+  sourceLink.style.display = "inline-flex";
+  sourceLink.style.width = "fit-content";
+  sourceLink.style.textDecoration = "none";
+  sourceLink.style.color = "white";
+  footerRow.appendChild(sourceLink);
+
+  addEventListener("pointerdown", begin, { once: true });
+  addEventListener("keydown", onKeyDown, { once: true });
+
   function begin() {
-    if (startTriggered) return;
-    startTriggered = true;
+    if (started) return;
+    started = true;
     safePlay(music);
     setTimeout(() => {
       destroy();
@@ -96,24 +124,17 @@ export function createTitleScreen({ onStart, onOpenControls }) {
     }, 120);
   }
 
-  function onPointerDown() {
-    begin();
-  }
-
   function onKeyDown(event) {
     if (event.repeat) return;
     begin();
   }
 
-  addEventListener("pointerdown", onPointerDown, { once: true });
-  addEventListener("keydown", onKeyDown, { once: true });
-
   function destroy() {
-    if (started) return;
-    started = true;
+    if (destroyed) return;
+    destroyed = true;
     music.pause();
     root.remove();
-    removeEventListener("pointerdown", onPointerDown);
+    removeEventListener("pointerdown", begin);
     removeEventListener("keydown", onKeyDown);
   }
 

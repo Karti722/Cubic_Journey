@@ -2,10 +2,11 @@ import { styleButton } from "./ui-theme.js";
 
 export function createHud(uiElement, { onOpenInfo } = {}) {
   const root = document.createElement("div");
+  const expandedRootWidth = "min(340px, calc(100vw - 32px))";
   root.style.position = "fixed";
   root.style.left = "16px";
   root.style.bottom = "16px";
-  root.style.width = "min(340px, calc(100vw - 32px))";
+  root.style.width = expandedRootWidth;
   root.style.zIndex = "12";
   root.style.pointerEvents = "none";
   root.style.color = "white";
@@ -40,10 +41,109 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
   status.textContent = "HUD";
   header.appendChild(status);
 
+  const collapseHudButton = document.createElement("button");
+  collapseHudButton.className = "cj-chip";
+  collapseHudButton.style.pointerEvents = "auto";
+  collapseHudButton.style.cursor = "pointer";
+  collapseHudButton.style.marginLeft = "auto";
+  collapseHudButton.textContent = "Hide ◂";
+  header.appendChild(collapseHudButton);
+
   const content = document.createElement("div");
   content.style.display = "grid";
   content.style.gap = "6px";
   panel.appendChild(content);
+
+  let campaignInfoExpanded = false;
+  let hudCollapsed = false;
+
+  const collapsedHudTab = document.createElement("button");
+  collapsedHudTab.className = "cj-chip";
+  collapsedHudTab.style.pointerEvents = "auto";
+  collapsedHudTab.style.cursor = "pointer";
+  collapsedHudTab.style.display = "none";
+  collapsedHudTab.style.padding = "0.45rem 0.75rem";
+  collapsedHudTab.style.background = "rgba(10, 16, 28, 0.96)";
+  collapsedHudTab.style.border = "1px solid rgba(126, 231, 255, 0.22)";
+  collapsedHudTab.style.boxShadow = "0 14px 30px rgba(0,0,0,0.32)";
+  collapsedHudTab.textContent = "Show HUD ▸";
+  root.appendChild(collapsedHudTab);
+
+  function setHudCollapsed(nextState) {
+    hudCollapsed = nextState;
+    panel.style.display = hudCollapsed ? "none" : "block";
+    collapsedHudTab.style.display = hudCollapsed ? "inline-flex" : "none";
+    root.style.width = hudCollapsed ? "auto" : expandedRootWidth;
+    collapseHudButton.textContent = hudCollapsed ? "Show ▸" : "Hide ◂";
+  }
+
+  collapseHudButton.addEventListener("click", () => setHudCollapsed(!hudCollapsed));
+  collapsedHudTab.addEventListener("click", () => setHudCollapsed(false));
+
+  const helpDock = document.createElement("div");
+  helpDock.style.position = "fixed";
+  helpDock.style.right = "16px";
+  helpDock.style.top = "16px";
+  helpDock.style.zIndex = "13";
+  helpDock.style.pointerEvents = "auto";
+  helpDock.style.width = "min(380px, calc(100vw - 32px))";
+  uiElement.appendChild(helpDock);
+
+  const helpToggle = document.createElement("div");
+  helpToggle.className = "cj-card";
+  helpToggle.style.width = "100%";
+  helpToggle.style.padding = "12px 14px";
+  helpToggle.style.display = "flex";
+  helpToggle.style.justifyContent = "space-between";
+  helpToggle.style.alignItems = "center";
+  helpToggle.style.gap = "10px";
+  helpToggle.style.cursor = "pointer";
+  helpToggle.style.color = "white";
+  helpToggle.style.textAlign = "left";
+  helpToggle.style.background = "rgba(10, 16, 28, 0.96)";
+  helpToggle.style.border = "1px solid rgba(126, 231, 255, 0.22)";
+  helpToggle.style.boxShadow = "0 18px 44px rgba(0,0,0,0.42)";
+  helpToggle.innerHTML = `
+    <span style="font-weight: 800; letter-spacing: 0.02em;">How to Play</span>
+    <span style="display:flex; gap:8px; align-items:center;">
+      <span data-help-arrow style="font-size: 1.1rem; line-height: 1;">▸</span>
+      <span data-help-exit style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.82;">Exit</span>
+    </span>
+  `;
+  helpDock.appendChild(helpToggle);
+
+  const helpPanel = document.createElement("div");
+  helpPanel.className = "cj-card cj-scrollbar";
+  helpPanel.style.marginTop = "8px";
+  helpPanel.style.padding = "12px 12px 10px";
+  helpPanel.style.maxHeight = "0";
+  helpPanel.style.overflow = "hidden";
+  helpPanel.style.opacity = "0";
+  helpPanel.style.transform = "translateY(-6px)";
+  helpPanel.style.transition = "max-height 220ms ease, opacity 180ms ease, transform 220ms ease";
+  helpPanel.style.pointerEvents = "none";
+  helpPanel.style.background = "rgba(10, 16, 28, 0.98)";
+  helpPanel.style.border = "1px solid rgba(126, 231, 255, 0.22)";
+  helpPanel.style.boxShadow = "0 22px 54px rgba(0,0,0,0.5)";
+  helpDock.appendChild(helpPanel);
+
+  let helpOpen = false;
+  const helpArrow = helpToggle.querySelector("[data-help-arrow]");
+  const helpExit = helpToggle.querySelector("[data-help-exit]");
+
+  function setHelpOpen(nextState) {
+    helpOpen = nextState;
+    helpPanel.innerHTML = helpOpen ? buildHelpContent() : "";
+    helpPanel.style.maxHeight = helpOpen ? "70vh" : "0";
+    helpPanel.style.opacity = helpOpen ? "1" : "0";
+    helpPanel.style.transform = helpOpen ? "translateY(0)" : "translateY(-6px)";
+    helpPanel.style.pointerEvents = helpOpen ? "auto" : "none";
+    if (helpArrow) helpArrow.textContent = helpOpen ? "▾" : "▸";
+    if (helpExit) helpExit.textContent = helpOpen ? "Hide" : "Exit";
+  }
+
+  helpToggle.addEventListener("click", () => setHelpOpen(!helpOpen));
+  setHelpOpen(false);
 
   function update(model) {
     const rows = [
@@ -62,26 +162,90 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
     }
 
     const infoRow = document.createElement("div");
-    infoRow.style.display = "flex";
+    infoRow.style.display = "grid";
     infoRow.style.gap = "8px";
-    infoRow.style.flexWrap = "wrap";
     infoRow.style.marginTop = "4px";
 
-    const infoButton = document.createElement("button");
-    infoButton.textContent = "Campaign Info";
-    infoButton.style.pointerEvents = "auto";
-    styleButton(infoButton, { compact: true, fullWidth: true });
-    if (typeof onOpenInfo === "function") {
-      infoButton.addEventListener("click", onOpenInfo);
-    } else {
-      infoButton.disabled = true;
+    const infoToggle = document.createElement("button");
+    infoToggle.className = "cj-card";
+    infoToggle.style.pointerEvents = "auto";
+    infoToggle.style.display = "flex";
+    infoToggle.style.justifyContent = "space-between";
+    infoToggle.style.alignItems = "center";
+    infoToggle.style.padding = "10px 12px";
+    infoToggle.style.cursor = "pointer";
+    infoToggle.style.color = "white";
+    infoToggle.style.textAlign = "left";
+    infoToggle.innerHTML = `<span style="font-weight: 700;">Campaign Info</span>`;
+    infoToggle.addEventListener("click", () => {
+      campaignInfoExpanded = !campaignInfoExpanded;
+      update(model);
+    });
+    infoRow.appendChild(infoToggle);
+
+    if (campaignInfoExpanded) {
+      const infoModal = document.createElement("div");
+      infoModal.className = "cj-card";
+      infoModal.style.padding = "10px";
+      infoModal.style.display = "grid";
+      infoModal.style.gap = "8px";
+
+      const infoText = document.createElement("div");
+      infoText.style.color = "rgba(255,255,255,0.82)";
+      infoText.style.fontSize = "0.86rem";
+      infoText.style.lineHeight = "1.45";
+      infoText.textContent = "Open the full campaign modal for story details, progression, objectives, and hub/world status.";
+      infoModal.appendChild(infoText);
+
+      const modalActions = document.createElement("div");
+      modalActions.style.display = "grid";
+      modalActions.style.gridTemplateColumns = "1fr 1fr";
+      modalActions.style.gap = "8px";
+      infoModal.appendChild(modalActions);
+
+      const openButton = document.createElement("button");
+      openButton.textContent = "Open Modal";
+      openButton.style.pointerEvents = "auto";
+      styleButton(openButton, { compact: true, primary: true, fullWidth: true });
+      if (typeof onOpenInfo === "function") {
+        openButton.addEventListener("click", onOpenInfo);
+      } else {
+        openButton.disabled = true;
+      }
+      modalActions.appendChild(openButton);
+
+      const collapseButton = document.createElement("button");
+      collapseButton.textContent = "Collapse";
+      collapseButton.style.pointerEvents = "auto";
+      styleButton(collapseButton, { compact: true, fullWidth: true });
+      collapseButton.addEventListener("click", () => {
+        campaignInfoExpanded = false;
+        update(model);
+      });
+      modalActions.appendChild(collapseButton);
+
+      infoRow.appendChild(infoModal);
     }
+
     content.replaceChildren(...rows, infoRow);
-    infoRow.appendChild(infoButton);
 
   }
 
+  setHudCollapsed(false);
+
   return { update };
+}
+
+function buildHelpContent() {
+  return `
+    <div class="cj-kicker" style="margin-bottom: 8px;">Player Guide</div>
+    <div style="display:grid; gap:10px;">
+      <div style="color: rgba(255,255,255,0.86); line-height: 1.45; font-size: 0.9rem;">This game was made with $0 budget and pure vibe coding. It is meant to feel like a browser game, not a technical project showcase.</div>
+      <div style="color: rgba(255,255,255,0.78); line-height: 1.5; font-size: 0.88rem;">Core controls: WASD to move, Space to jump and double jump, Shift to dash, E to interact, M for the world menu, P or Esc to pause, H to return to the hub from the world menu.</div>
+      <div style="color: rgba(255,255,255,0.78); line-height: 1.5; font-size: 0.88rem;">Menus: the pause menu handles resume, travel, music, controls, shop, and campaign info. The campaign info screen holds the long story text. The controls menu lets you rebind keys. The shop menu spends coins on skills. The world menu is your stage selector.</div>
+      <div style="color: rgba(255,255,255,0.78); line-height: 1.5; font-size: 0.88rem;">Tips: collect key cubes to unlock new worlds, watch for portals in the hub, and use the pause menu if you need to change audio or open another screen.</div>
+    </div>
+  `;
 }
 
 function makeRow(label, value) {

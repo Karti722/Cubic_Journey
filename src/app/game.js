@@ -34,6 +34,7 @@ import { SKILL_DEFINITIONS } from "../game/skills/skill-data.js";
 export function startGame(uiElement) {
   const { scene, camera, renderer, clock } = createRenderContext();
   attachResize(camera, renderer);
+  const gameStartTimeMs = performance.now();
 
   const playerMaterial = new THREE.MeshStandardMaterial({
     color: 0xff5555,
@@ -127,10 +128,6 @@ export function startGame(uiElement) {
       grounded = false;
       collectedCoins = 0;
 
-      if (runtime.enemies && runtime.enemies.length > 0) {
-        audio.playSfx("enemy", 0.45);
-      }
-
       setMusicForCurrentState();
       hud.update(buildHudModel());
       isWorldLoading = false;
@@ -144,6 +141,7 @@ export function startGame(uiElement) {
     endCreditsActive = true;
     paused = true;
     audio.pauseMusic();
+    audio.playSfx("credits", 0.95);
     loadingScreen.hide();
 
     const creditsRoot = document.createElement("div");
@@ -728,14 +726,21 @@ export function startGame(uiElement) {
     }
   });
 
-  function unlockAudio() {
+  function unlockAudio(event) {
+    if (performance.now() - gameStartTimeMs < 1200) return;
+    if (event?.type === "keydown") {
+      if (event.repeat) return;
+      if (event.code === "Enter" || event.code === "NumpadEnter" || event.code === "Space") return;
+    }
     audio.unlock();
     setMusicForCurrentState();
     removeEventListener("pointerdown", unlockAudio);
+    removeEventListener("touchstart", unlockAudio);
     removeEventListener("keydown", unlockAudio);
   }
 
   addEventListener("pointerdown", unlockAudio);
+  addEventListener("touchstart", unlockAudio, { passive: true });
   addEventListener("keydown", unlockAudio);
 
   if (isCampaignCompleteFromSave()) {

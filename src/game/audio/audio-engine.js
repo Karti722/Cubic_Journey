@@ -16,6 +16,7 @@ const SFX_FILES = {
   portal: "src/game/audio/sfx/portal.mp3",
   key: "src/game/audio/sfx/key.mp3",
   boss: "src/game/audio/sfx/boss.mp3",
+  credits: "src/game/audio/sfx/credits.mp3",
   enemy: "src/game/audio/sfx/enemy.mp3",
   enemyDefeat: "src/game/audio/sfx/enemy-defeat.mp3",
   damage: "src/game/audio/sfx/damage.mp3",

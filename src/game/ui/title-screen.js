@@ -10,11 +10,6 @@ export function createTitleScreen({ onStart, onOpenControls }) {
   });
   document.body.appendChild(root);
 
-  const music = new Audio("src/game/audio/music/title.mp3");
-  music.loop = true;
-  music.volume = 0.5;
-  music.preload = "auto";
-
   let destroyed = false;
   let started = false;
 
@@ -79,7 +74,6 @@ export function createTitleScreen({ onStart, onOpenControls }) {
   function begin() {
     if (started) return;
     started = true;
-    safePlay(music);
     setTimeout(() => {
       destroy();
       if (typeof onStart === "function") onStart();
@@ -89,7 +83,6 @@ export function createTitleScreen({ onStart, onOpenControls }) {
   function destroy() {
     if (destroyed) return;
     destroyed = true;
-    music.pause();
     root.remove();
   }
 
@@ -103,11 +96,4 @@ function addButton(parent, label, handler) {
   button.addEventListener("click", handler);
   parent.appendChild(button);
   return button;
-}
-
-function safePlay(audio) {
-  const result = audio.play();
-  if (result && typeof result.catch === "function") {
-    result.catch(() => {});
-  }
 }

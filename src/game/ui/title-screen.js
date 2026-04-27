@@ -85,12 +85,6 @@ export function createTitleScreen({ onStart, onOpenControls }) {
   footerRow.style.flexWrap = "wrap";
   panel.appendChild(footerRow);
 
-  const sourceText = document.createElement("div");
-  sourceText.className = "cj-subtitle";
-  sourceText.style.maxWidth = "44ch";
-  sourceText.textContent = "This is the GitHub repo for Cubic Journey. Download the zip, make your own version, remix it, or do whatever you want with this codebase.";
-  footerRow.appendChild(sourceText);
-
   if (typeof onOpenControls === "function") {
     const controlsButton = document.createElement("button");
     controlsButton.textContent = "Controls";
@@ -98,18 +92,6 @@ export function createTitleScreen({ onStart, onOpenControls }) {
     controlsButton.addEventListener("click", onOpenControls);
     footerRow.appendChild(controlsButton);
   }
-
-  const sourceLink = document.createElement("a");
-  sourceLink.href = "https://github.com/Karti722/Cubic_Journey";
-  sourceLink.target = "_blank";
-  sourceLink.rel = "noreferrer";
-  sourceLink.textContent = "Open source repo";
-  sourceLink.className = "cj-chip";
-  sourceLink.style.display = "inline-flex";
-  sourceLink.style.width = "fit-content";
-  sourceLink.style.textDecoration = "none";
-  sourceLink.style.color = "white";
-  footerRow.appendChild(sourceLink);
 
   addEventListener("pointerdown", begin, { once: true });
   addEventListener("keydown", onKeyDown, { once: true });

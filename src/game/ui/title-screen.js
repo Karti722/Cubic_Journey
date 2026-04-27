@@ -24,23 +24,6 @@ export function createTitleScreen({ onStart, onOpenControls }) {
   panel.style.gap = "14px";
   root.appendChild(panel);
 
-  const topRow = document.createElement("div");
-  topRow.style.display = "flex";
-  topRow.style.justifyContent = "space-between";
-  topRow.style.alignItems = "center";
-  topRow.style.gap = "10px";
-  panel.appendChild(topRow);
-
-  const badge = document.createElement("div");
-  badge.className = "cj-chip";
-  badge.textContent = "Browser game";
-  topRow.appendChild(badge);
-
-  const tinyHint = document.createElement("div");
-  tinyHint.className = "cj-chip";
-  tinyHint.textContent = "Best played full screen";
-  topRow.appendChild(tinyHint);
-
   const title = document.createElement("div");
   title.textContent = "Cubic Journey";
   styleHeading(title, { align: "left", size: "clamp(3rem, 6vw, 4.6rem)" });
@@ -48,7 +31,7 @@ export function createTitleScreen({ onStart, onOpenControls }) {
   panel.appendChild(title);
 
   const subtitle = document.createElement("div");
-  subtitle.textContent = "Press any button to play.";
+  subtitle.textContent = "Best played full screen.";
   styleSubtext(subtitle, { align: "left", marginBottom: "0", fontSize: "1rem" });
   subtitle.style.maxWidth = "44ch";
   panel.appendChild(subtitle);
@@ -64,7 +47,7 @@ export function createTitleScreen({ onStart, onOpenControls }) {
   panel.appendChild(launchBar);
 
   const prompt = document.createElement("div");
-  prompt.textContent = "Press any key, click, or tap to start";
+  prompt.textContent = "Press the Play button to start";
   prompt.style.fontWeight = "800";
   prompt.style.letterSpacing = "0.03em";
   prompt.style.textTransform = "uppercase";
@@ -92,22 +75,6 @@ export function createTitleScreen({ onStart, onOpenControls }) {
   });
   playButton.addEventListener("click", begin);
   launchBar.appendChild(playButton);
-
-  const footerRow = document.createElement("div");
-  footerRow.style.display = "flex";
-  footerRow.style.justifyContent = "space-between";
-  footerRow.style.alignItems = "center";
-  footerRow.style.gap = "10px";
-  footerRow.style.flexWrap = "wrap";
-  panel.appendChild(footerRow);
-
-  if (typeof onOpenControls === "function") {
-    const controlsButton = document.createElement("button");
-    controlsButton.textContent = "Controls";
-    styleButton(controlsButton, { primary: false });
-    controlsButton.addEventListener("click", onOpenControls);
-    footerRow.appendChild(controlsButton);
-  }
 
   function begin() {
     if (started) return;

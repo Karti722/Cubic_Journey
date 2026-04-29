@@ -26,7 +26,7 @@ export function createTitleScreen({ onStart, onOpenControls }) {
   panel.appendChild(title);
 
   const subtitle = document.createElement("div");
-  subtitle.textContent = "Best played full screen.";
+  subtitle.textContent = "Made by Kartikeya Kumaria. Best played full screen.";
   styleSubtext(subtitle, { align: "left", marginBottom: "0", fontSize: "1rem" });
   subtitle.style.maxWidth = "44ch";
   panel.appendChild(subtitle);

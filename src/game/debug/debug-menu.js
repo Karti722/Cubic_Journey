@@ -46,7 +46,7 @@ export function createDebugMenu({
     panel.appendChild(header);
 
     const title = document.createElement("div");
-    title.textContent = "Debug Menu";
+    title.textContent = "Cheats Menu";
     styleHeading(title, { size: "clamp(2rem, 4vw, 3rem)", marginBottom: "8px" });
     header.appendChild(title);
 
@@ -59,7 +59,7 @@ export function createDebugMenu({
     const subtitle = document.createElement("div");
     subtitle.style.marginTop = "8px";
     styleSubtext(subtitle, { marginBottom: "0" });
-    subtitle.textContent = `Current: ${model.currentLabel} | Locks: bypassed in this branch`;
+    subtitle.textContent = `Current: ${model.currentLabel}`;
     panel.appendChild(subtitle);
 
     const controls = document.createElement("div");
@@ -115,15 +115,6 @@ export function createDebugMenu({
         addButton(progressButtons, "Mid Campaign", () => onMidCampaign());
       }
 
-      if (typeof onUnlockAllWorlds === "function") {
-        addButton(progressButtons, "Unlock Worlds", () => onUnlockAllWorlds());
-      }
-
-      if (typeof onNearCompletion === "function") {
-        const nearCompleteButton = addButton(progressButtons, "Near Completion", () => onNearCompletion());
-        nearCompleteButton.style.background = "#5b4a16";
-      }
-
       if (typeof onFinalBossReady === "function") {
         addButton(progressButtons, "Final Boss Ready", () => onFinalBossReady());
       }
@@ -160,20 +151,9 @@ export function createDebugMenu({
       skillButtons.style.flexWrap = "wrap";
       skillLab.appendChild(skillButtons);
 
-      if (typeof onUnlockAllSkills === "function") {
-        addButton(skillButtons, "Unlock All Skills", () => onUnlockAllSkills());
-      }
-
-      if (typeof onResetSkills === "function") {
-        addButton(skillButtons, "Reset Skills", () => onResetSkills());
-      }
-
-      if (typeof onMaxCurrency === "function") {
-        addButton(skillButtons, "Max Currency", () => onMaxCurrency());
-      }
 
       if (typeof onSetCollectibles === "function") {
-        addButton(skillButtons, "Set Collectibles", () => {
+        addButton(skillButtons, "Set Currency", () => {
           const raw = window.prompt("Set collectible count (coins):", String(model.currency || 0));
           if (raw === null) return;
           const parsed = Number.parseInt(raw, 10);

@@ -16,6 +16,30 @@
 <body>
 <div id="ui"></div>
 
-<script type="module" src="./src/app/main.js?v=14"></script>
+<script>
+  (() => {
+    const source = new EventSource("/__events");
+    source.addEventListener("reload", (event) => {
+      const token = event?.data || Date.now().toString();
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("__lr", token);
+
+      // Best-effort cache cleanup before forcing a full navigation.
+      if ("caches" in window) {
+        caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))).finally(() => {
+          window.location.replace(nextUrl.toString());
+        });
+        return;
+      }
+
+      window.location.replace(nextUrl.toString());
+    });
+    source.onerror = () => {
+      // Keep retrying automatically; EventSource reconnects by default.
+    };
+  })();
+</script>
+
+<script type="module" src="./src/app/main.js?v=18"></script>
 </body>
 </html>

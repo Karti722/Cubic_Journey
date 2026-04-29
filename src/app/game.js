@@ -106,6 +106,7 @@ export function startGame(uiElement) {
   const velocity = new THREE.Vector3();
   const ability = createAbilityState(PLAYER_CONFIG.extraAirJumps);
   let debugToggleLatch = false;
+  let skipKeyLatch = false;
 
   function loadDefinition(definition, loadingMessage = "Building the world...") {
     const loadToken = ++worldLoadToken;
@@ -429,6 +430,7 @@ export function startGame(uiElement) {
         currency: campaign.state.currency,
         skillCount: countOwnedSkills(campaign.state.skills),
         portalPrompt: "",
+        skipPrompt: "",
         finalWin: campaign.state.finalWin,
         worldName: "",
         stageNumber: 0,
@@ -440,6 +442,9 @@ export function startGame(uiElement) {
     }
 
     const world = GAME_CONFIG.campaignWorlds[campaign.state.worldIndex];
+    const regularLevelSkipPrompt = runtime && !runtime.isBossStage && campaign.canAfford(10)
+      ? "Press 1 to skip this level (Charge: 10 coins)"
+      : "";
     return {
       mode: "level",
       worldName: world.name,
@@ -451,6 +456,7 @@ export function startGame(uiElement) {
       keyCubes: campaign.state.keyCubes,
       currency: campaign.state.currency,
       skillCount: countOwnedSkills(campaign.state.skills),
+      skipPrompt: regularLevelSkipPrompt,
       storyLine: STORY.worldNarratives[campaign.state.worldIndex],
       isBossStage: runtime.isBossStage,
       bossName: runtime.isBossStage ? STORY.bossNames[campaign.state.worldIndex] : ""
@@ -515,6 +521,18 @@ export function startGame(uiElement) {
     }
 
     debugToggleLatch = false;
+    return false;
+  }
+
+  function isSkipKeyPressed() {
+    const pressed = keys.Digit1 || keys.Numpad1;
+    if (pressed) {
+      if (skipKeyLatch) return false;
+      skipKeyLatch = true;
+      return true;
+    }
+
+    skipKeyLatch = false;
     return false;
   }
 
@@ -953,11 +971,40 @@ export function startGame(uiElement) {
     if (campaign.state.mode === "hub") {
       const nearbyPortal = findNearbyPortal(player, runtime.portals, GAME_CONFIG.portalRadius);
       const pressedEnter = controls.isActionPressed("interact");
+      const pressedSkip = isSkipKeyPressed();
+      const canSkipWorld = nearbyPortal && nearbyPortal.unlocked && campaign.canAfford(200);
 
       if (nearbyPortal && pressedEnter && nearbyPortal.unlocked) {
         const progress = campaign.state.worldProgress[nearbyPortal.worldIndex];
         audio.playSfx("portal", 0.75);
         travelToWorld(nearbyPortal.worldIndex, progress.highestUnlockedStage);
+      }
+
+      if (pressedSkip && canSkipWorld && campaign.spendCurrency(200)) {
+        audio.playSfx("explosion", 0.85);
+        const worldIndex = nearbyPortal.worldIndex;
+        const world = GAME_CONFIG.campaignWorlds[worldIndex];
+        const progress = campaign.state.worldProgress[worldIndex];
+        const bossStage = getWorldStageCount(world) - 1;
+
+        progress.highestUnlockedStage = bossStage;
+        progress.highestCompletedStage = bossStage;
+        progress.bossDefeated = true;
+        progress.keyCubeClaimed = !!world.keyCubeReward;
+
+        recalculateProgressTotals();
+        persistProgress();
+        worldMenu.render();
+        pauseMenu.render();
+
+        if (worldIndex === GAME_CONFIG.finalWorldIndex) {
+          campaign.state.finalWin = true;
+          playEndCredits();
+          return;
+        }
+
+        loadHub();
+        return;
       }
 
       hud.update({
@@ -966,9 +1013,41 @@ export function startGame(uiElement) {
           ? nearbyPortal.unlocked
             ? `Press E to enter ${nearbyPortal.name}`
             : `${nearbyPortal.name} is locked (need key cubes)`
+          : "",
+        skipPrompt: canSkipWorld
+          ? `Press 1 to skip ${nearbyPortal.name} for 200 currency and claim its cube`
           : ""
       });
     } else {
+      const skipCost = runtime.isBossStage ? 30 : 10;
+      const canSkipLevel = campaign.canAfford(skipCost);
+      const pressedSkip = isSkipKeyPressed();
+
+      if (pressedSkip && canSkipLevel && campaign.spendCurrency(skipCost)) {
+        const skippedBossStage = runtime.isBossStage;
+        const result = campaign.completeCurrentStage();
+        if (skippedBossStage) {
+          audio.playSfx("boss", 0.9);
+        } else {
+          audio.playSfx("portal", 0.7);
+        }
+        persistProgress();
+        worldMenu.render();
+        pauseMenu.render();
+
+        if (campaign.state.finalWin) {
+          playEndCredits();
+          return;
+        }
+
+        if (result.transition === "hub") {
+          loadHub();
+        } else {
+          loadCurrentStage();
+        }
+        return;
+      }
+
       const collectedThisFrame = collectNearby(player, runtime.collectibles, 1.05);
       if (collectedThisFrame > 0) {
         collectedCoins += collectedThisFrame;
@@ -1002,7 +1081,11 @@ export function startGame(uiElement) {
         }
       }
 
-      hud.update(buildHudModel());
+      const hudModel = buildHudModel();
+      hud.update({
+        ...hudModel,
+        skipPrompt: hudModel.skipPrompt || (campaign.canAfford(10) ? "Press 1 to skip this level (Charge: 10 coins)" : "")
+      });
     }
 
     cameraController.updateCamera();

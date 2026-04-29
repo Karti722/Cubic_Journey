@@ -972,7 +972,7 @@ export function startGame(uiElement) {
       const nearbyPortal = findNearbyPortal(player, runtime.portals, GAME_CONFIG.portalRadius);
       const pressedEnter = controls.isActionPressed("interact");
       const pressedSkip = isSkipKeyPressed();
-      const canSkipWorld = nearbyPortal && nearbyPortal.unlocked && campaign.canAfford(200);
+      const canSkipWorld = nearbyPortal && nearbyPortal.unlocked && campaign.canAfford(100);
 
       if (nearbyPortal && pressedEnter && nearbyPortal.unlocked) {
         const progress = campaign.state.worldProgress[nearbyPortal.worldIndex];
@@ -980,7 +980,7 @@ export function startGame(uiElement) {
         travelToWorld(nearbyPortal.worldIndex, progress.highestUnlockedStage);
       }
 
-      if (pressedSkip && canSkipWorld && campaign.spendCurrency(200)) {
+      if (pressedSkip && canSkipWorld && campaign.spendCurrency(100)) {
         audio.playSfx("explosion", 0.85);
         const worldIndex = nearbyPortal.worldIndex;
         const world = GAME_CONFIG.campaignWorlds[worldIndex];
@@ -1015,7 +1015,7 @@ export function startGame(uiElement) {
             : `${nearbyPortal.name} is locked (need key cubes)`
           : "",
         skipPrompt: canSkipWorld
-          ? `Press 1 to skip ${nearbyPortal.name} for 200 currency and claim its cube`
+          ? `Press 1 to skip ${nearbyPortal.name} for 100 currency and claim its boss cube`
           : ""
       });
     } else {

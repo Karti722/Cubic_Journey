@@ -202,17 +202,19 @@ export function createDebugMenu({
       card.appendChild(info);
 
       if (typeof onSetWorldState === "function") {
-        const worldStateButtons = document.createElement("div");
-        worldStateButtons.style.display = "flex";
-        worldStateButtons.style.gap = "6px";
-        worldStateButtons.style.marginBottom = "8px";
-        worldStateButtons.style.flexWrap = "wrap";
-
-        const clearButton = addButton(worldStateButtons, "Boss Clear", () => onSetWorldState(world.index, "bossCleared"));
-        clearButton.style.padding = "5px 8px";
-        clearButton.style.background = "#5b4a16";
-
-        card.appendChild(worldStateButtons);
+          if (!world.bossDefeated) {
+            const worldStateButtons = document.createElement("div");
+            worldStateButtons.style.display = "flex";
+            worldStateButtons.style.gap = "6px";
+            worldStateButtons.style.marginBottom = "8px";
+            worldStateButtons.style.flexWrap = "wrap";
+  
+            const clearButton = addButton(worldStateButtons, "Boss Clear", () => onSetWorldState(world.index, "bossCleared"));
+            clearButton.style.padding = "5px 8px";
+            clearButton.style.background = "#5b4a16";
+  
+            card.appendChild(worldStateButtons);
+          }
       }
 
       const stageButtons = document.createElement("div");

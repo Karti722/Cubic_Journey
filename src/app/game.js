@@ -442,8 +442,8 @@ export function startGame(uiElement) {
     }
 
     const world = GAME_CONFIG.campaignWorlds[campaign.state.worldIndex];
-    const regularLevelSkipPrompt = runtime && !runtime.isBossStage && campaign.canAfford(10)
-      ? "Press 1 to skip this level (Charge: 10 coins)"
+    const regularLevelSkipPrompt = runtime && !runtime.isBossStage && campaign.canAfford(20)
+      ? "Press 1 to skip this level (Charge: 20 coins)"
       : "";
     return {
       mode: "level",
@@ -1019,7 +1019,7 @@ export function startGame(uiElement) {
           : ""
       });
     } else {
-      const skipCost = runtime.isBossStage ? 30 : 10;
+      const skipCost = runtime.isBossStage ? 60 : 20;
       const canSkipLevel = campaign.canAfford(skipCost);
       const pressedSkip = isSkipKeyPressed();
 
@@ -1084,7 +1084,7 @@ export function startGame(uiElement) {
       const hudModel = buildHudModel();
       hud.update({
         ...hudModel,
-        skipPrompt: hudModel.skipPrompt || (campaign.canAfford(10) ? "Press 1 to skip this level (Charge: 10 coins)" : "")
+        skipPrompt: hudModel.skipPrompt || (campaign.canAfford(60) ? "Press 1 to claim the boss cube (Charge: 60 coins)" : "")
       });
     }
 

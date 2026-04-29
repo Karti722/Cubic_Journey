@@ -208,12 +208,6 @@ export function createDebugMenu({
         worldStateButtons.style.marginBottom = "8px";
         worldStateButtons.style.flexWrap = "wrap";
 
-        const freshButton = addButton(worldStateButtons, "Wipe", () => onSetWorldState(world.index, "fresh"));
-        freshButton.style.padding = "5px 8px";
-
-        const unlockButton = addButton(worldStateButtons, "Unlock", () => onSetWorldState(world.index, "unlocked"));
-        unlockButton.style.padding = "5px 8px";
-
         const clearButton = addButton(worldStateButtons, "Boss Clear", () => onSetWorldState(world.index, "bossCleared"));
         clearButton.style.padding = "5px 8px";
         clearButton.style.background = "#5b4a16";

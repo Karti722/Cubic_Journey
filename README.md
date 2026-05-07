@@ -2,7 +2,7 @@
 
 A long-form Three.js 3D platformer campaign built with modular game systems.
 
-The game now includes:
+The game includes the following:
 
 - A hub world with unlockable portals
 - 4 campaign worlds
@@ -52,9 +52,7 @@ http://127.0.0.1:8123
 - C: Open the controls menu from pause
 - O: Open the skill shop from pause
 - P / Esc: Pause the game and open the detailed menu
-## Debug Menu (Debug Branch Only)
-
-This feature exists only on the debug-menu branch and is intentionally isolated from the normal game branch.
+## Cheats Menu 
 
 How to activate:
 
@@ -132,50 +130,8 @@ Expected music and sound paths:
 
 Suggested stock music sources once you are ready:
 
-- YouTube Audio Library: free, easy to search, good for game loops
+## Music Source
 - Pixabay Music: broad royalty-free catalog
-- Uppbeat: modern tracks with clear licensing tiers
-- Free Music Archive: large library, but check the license on each track
-- Incompetech: classic royalty-free catalog by Kevin MacLeod
-- FreePD: public-domain music and effects
-- Mixkit: short cinematic and ambient tracks, plus SFX
-
-Tip: for a platformer, look for looping ambient tracks for the hub and slower exploratory worlds, plus a more intense battle loop for bosses.
-
-## Deploy On Netlify
-
-### Option 1: Drag And Drop
-
-1. Go to Netlify and open Sites.
-2. Drag this project folder (or a zip of it) into the Deploy manually area.
-3. Wait for deployment, then open the generated site URL.
-
-### Option 2: Connect GitHub Repository
-
-1. Push your latest changes to GitHub.
-2. In Netlify, click Add new site, then Import an existing project.
-3. Choose GitHub and select this repository.
-4. Set Production branch to main.
-5. Use these build settings:
-
-- Build command: (leave empty)
-- Publish directory: .
-
-6. Click Deploy site.
-
-### Netlify Notes
-
-- This is a static site, so no build step is required.
-- Main is the deploy branch for this repository.
-- If you later add a bundler (like Vite), update Build command and Publish directory accordingly.
-- The included netlify.toml file keeps the project deployable as a plain static site.
-
-## Alternative Static Hosts
-
-Netlify is a good fit here because the project is plain HTML, CSS, and JavaScript with no build step.
-
-- Cloudflare Pages also works well for the same reason and can be used if you want another fast static edge host.
-- GitHub Pages also works, but Netlify or Cloudflare Pages are better matches for this repo because they handle static hosting and module assets with less setup.
 
 ## Project Structure
 
@@ -204,6 +160,3 @@ Netlify is a good fit here because the project is plain HTML, CSS, and JavaScrip
 - src/game/story/story-data.js: Story and boss names
 - src/game/persistence/save-store.js: localStorage save/load helpers
 - serve.py: Local static server with JS MIME fix
-
-# Music
-- From Pixabay

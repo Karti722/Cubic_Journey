@@ -360,6 +360,13 @@ export function startGame(uiElement, options = {}) {
     }
   }
 
+  function cancelMinigameCharge() {
+    minigameState.chargeHeldSince = null;
+    minigameState.slashBufferAt = null;
+    minigameState.chargeLastVisual = 0;
+    minigameState.slashFiredThisPress = false;
+  }
+
   function setMusicForCurrentState() {
     const trackName = minigameState.active
       ? "boss"
@@ -1136,6 +1143,7 @@ export function startGame(uiElement, options = {}) {
       const slashPressed = controls.isActionPressed("slash");
       const tapWindow = 0.06; // small window to consider fast taps
       const chargeStartDelay = 0.18; // how long before we treat hold as charge
+      const chargeHoldDuration = 0.75;
 
       if (slashPressed) {
         minigameState.slashBufferAt = elapsed;
@@ -1187,7 +1195,7 @@ export function startGame(uiElement, options = {}) {
         // while charging, emit visuals
         if (minigameState.chargeHeldSince != null) {
           const held = elapsed - (minigameState.chargeHeldSince || 0);
-          const ratio = Math.min(1, held / 1.0);
+          const ratio = Math.min(1, held / chargeHoldDuration);
           if (elapsed - (minigameState.chargeLastVisual || 0) >= 0.12) {
             const ready = ratio >= 1 && elapsed >= ((minigameState.chargeCooldownUntil) || 0);
             effects.emitSlash(player.position, { x: 0, z: 1 }, {
@@ -1204,10 +1212,10 @@ export function startGame(uiElement, options = {}) {
         // released: decide between instant tap, short tap, or charged explosion
         if (minigameState.chargeHeldSince != null) {
           const held = elapsed - minigameState.chargeHeldSince;
-          if (held >= 1.0 && elapsed >= (minigameState.chargeCooldownUntil || 0) && !minigameState.won) {
+          if (held >= chargeHoldDuration && elapsed >= (minigameState.chargeCooldownUntil || 0) && !minigameState.won) {
             audio.playSfx("explosion", 0.95);
             const baseBlast = 5.0;
-            const blastRadius = baseBlast * 3.0; // 3x larger sphere
+            const blastRadius = baseBlast * 3.6; // 1.2x larger than the prior charged radius
             const explosionScale = Math.max(10, Math.round(blastRadius * 0.85 * 10) / 10);
             effects.emitExplosion(player.position, { scale: explosionScale, life: 1.0, color: 0xffe8cc });
             if (cameraController && typeof cameraController.shake === "function") {
@@ -1360,6 +1368,7 @@ export function startGame(uiElement, options = {}) {
     }
 
     if (enemyContact.playerHit && elapsed >= damageCooldownUntil) {
+      cancelMinigameCharge();
       triggerDamageFeedback(elapsed);
       effects.emit("hit", player.position, { x: 0, y: 1.2, z: 0 }, 0.55, 10);
       player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
@@ -1372,6 +1381,7 @@ export function startGame(uiElement, options = {}) {
       const bombResult = resolveBombContacts(player, runtime.bombs, elapsed, { touchPadding: 0.6 });
       if (bombResult.exploded > 0 && elapsed >= damageCooldownUntil) {
         audio.playSfx("explosion", 0.9);
+        cancelMinigameCharge();
         effects.emit("hit", player.position, { x: 0, y: 1.1, z: 0 }, 0.9, 18);
         triggerDamageFeedback(elapsed);
         player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);

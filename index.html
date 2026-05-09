@@ -22,7 +22,9 @@
     source.addEventListener("reload", (event) => {
       const token = event?.data || Date.now().toString();
       const nextUrl = new URL(window.location.href);
-      nextUrl.searchParams.set("__lr", token);
+      // Use the URL hash to carry the live-reload token instead of a query param.
+      // Hash changes are less likely to interfere with extensions or message channels.
+      nextUrl.hash = `__lr=${token}`;
 
       // Best-effort cache cleanup before forcing a full navigation.
       if ("caches" in window) {

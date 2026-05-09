@@ -158,7 +158,7 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
 
   const fpsDock = document.createElement("div");
   fpsDock.style.position = "fixed";
-  fpsDock.style.right = "16px";
+  fpsDock.style.left = "16px";
   fpsDock.style.top = "16px";
   fpsDock.style.zIndex = "80";
   fpsDock.style.pointerEvents = "none";
@@ -175,6 +175,16 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
   fpsChip.style.fontWeight = "800";
   fpsChip.textContent = "FPS --";
   fpsDock.appendChild(fpsChip);
+
+  const chargeChip = document.createElement("div");
+  chargeChip.className = "cj-chip";
+  chargeChip.style.display = "none";
+  chargeChip.style.marginLeft = "8px";
+  chargeChip.style.padding = "8px 10px";
+  chargeChip.style.fontWeight = "800";
+  chargeChip.style.letterSpacing = "0.03em";
+  chargeChip.textContent = "Hold F to Charge";
+  fpsDock.appendChild(chargeChip);
 
   function setHudCollapsed(nextState) {
     hudCollapsed = nextState;
@@ -367,6 +377,16 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
 
     updateBossBanner(model);
 
+    // Charge-ready indicator (show only during minigame when charged explosion is available)
+    if (model.chargeReady) {
+      chargeChip.style.display = "inline-flex";
+      chargeChip.style.background = "rgba(255, 59, 59, 0.94)";
+      chargeChip.style.border = "1px solid rgba(255, 59, 59, 0.28)";
+      chargeChip.style.color = "white";
+    } else {
+      chargeChip.style.display = "none";
+    }
+
   }
 
   function updateBossBanner(model) {
@@ -401,6 +421,23 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
     }, 2200);
   }
 
+  function showCenterBanner(title, body, duration = 2000) {
+    centerBannerTitle.textContent = title;
+    centerBannerBody.textContent = body;
+    centerBanner.style.display = "block";
+    centerBanner.style.opacity = "0";
+    centerBanner.style.transform = "translateY(10px) scale(0.98)";
+    requestAnimationFrame(() => {
+      centerBanner.style.opacity = "1";
+      centerBanner.style.transform = "translateY(0) scale(1)";
+    });
+
+    if (centerBannerTimer) clearTimeout(centerBannerTimer);
+    centerBannerTimer = setTimeout(() => {
+      hideBossBanner();
+    }, duration);
+  }
+
   function hideBossBanner() {
     centerBanner.style.opacity = "0";
     centerBanner.style.transform = "translateY(-8px) scale(0.985)";
@@ -417,7 +454,7 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
 
   setHudCollapsed(false);
 
-  return { update };
+  return { update, showCenterBanner };
 }
 
 function buildHelpContent() {
@@ -425,7 +462,7 @@ function buildHelpContent() {
     <div class="cj-kicker" style="margin-bottom: 8px;">Player Guide</div>
     <div style="display:grid; gap:10px;">
       <div style="color: rgba(255,255,255,0.86); line-height: 1.45; font-size: 0.9rem;">This game was made with $0 budget and pure vibe coding. It is meant to feel like a browser game, not a technical project showcase.</div>
-      <div style="color: rgba(255,255,255,0.78); line-height: 1.5; font-size: 0.88rem;">Core controls: WASD to move, Space to jump and double jump, Shift to dash, E to interact, M for the world menu, P or Esc to pause, H to return to the hub from the world menu.</div>
+      <div style="color: rgba(255,255,255,0.78); line-height: 1.5; font-size: 0.88rem;">Core controls: WASD to move, Space to jump and double jump, Shift to dash, F to do a 360 slash, E to interact, M for the world menu, P or Esc to pause, H to return to the hub from the world menu.</div>
       <div style="color: rgba(255,255,255,0.78); line-height: 1.5; font-size: 0.88rem;">Menus: the pause menu handles resume, travel, music, controls, shop, and campaign info. The campaign info screen holds the long story text. The controls menu lets you rebind keys. The shop menu spends coins on skills. The world menu is your stage selector.</div>
       <div style="color: rgba(255,255,255,0.78); line-height: 1.5; font-size: 0.88rem;">Cheats Menu: a developer utility panel for fast progression, teleporting, and skill/currency setup while testing. Activate it anytime with F10 or the backquote key ( 0060).</div>
       <div style="color: rgba(255,255,255,0.78); line-height: 1.5; font-size: 0.88rem;">Tips: collect key cubes to unlock new worlds, watch for portals in the hub, and use the pause menu if you need to change audio or open another screen.</div>

@@ -10,6 +10,7 @@ export const DEFAULT_CONTROL_BINDINGS = {
   pause: ["Escape", "KeyP"],
   worldMenu: ["KeyM"],
   hub: ["KeyH"],
+  slash: ["KeyF", "Numpad0"],
   interact: ["KeyE"],
   shop: ["KeyO"],
   controls: ["KeyC"]

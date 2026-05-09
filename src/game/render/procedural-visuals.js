@@ -63,6 +63,46 @@ function createPlayerAvatar(textures) {
   mouth.position.set(0, 0.42, 0.215);
   avatar.add(mouth);
 
+  // add a simple front-face decal (canvas texture) so the head reads from the front
+  const faceCanvas = document.createElement("canvas");
+  faceCanvas.width = 128;
+  faceCanvas.height = 128;
+  const fctx = faceCanvas.getContext("2d");
+  // background skin tone
+  fctx.fillStyle = "#ffdcbf";
+  fctx.fillRect(0, 0, 128, 128);
+  // eye whites
+  fctx.fillStyle = "#ffffff";
+  fctx.beginPath(); fctx.arc(38, 46, 8, 0, Math.PI * 2); fctx.fill();
+  fctx.beginPath(); fctx.arc(90, 46, 8, 0, Math.PI * 2); fctx.fill();
+  // pupils
+  fctx.fillStyle = "#102030";
+  fctx.beginPath(); fctx.arc(38, 46, 3.5, 0, Math.PI * 2); fctx.fill();
+  fctx.beginPath(); fctx.arc(90, 46, 3.5, 0, Math.PI * 2); fctx.fill();
+  // eyebrows
+  fctx.strokeStyle = "#40221a";
+  fctx.lineWidth = 3;
+  fctx.beginPath(); fctx.moveTo(28, 34); fctx.lineTo(48, 36); fctx.stroke();
+  fctx.beginPath(); fctx.moveTo(80, 36); fctx.lineTo(100, 34); fctx.stroke();
+  // smiling mouth
+  fctx.fillStyle = "#40221a";
+  fctx.beginPath();
+  fctx.ellipse(64, 94, 18, 8, 0, 0, Math.PI * 2);
+  fctx.fill();
+  // subtle cheek tint
+  const g = fctx.createRadialGradient(38, 78, 2, 38, 78, 18);
+  g.addColorStop(0, "rgba(255,140,115,0.14)");
+  g.addColorStop(1, "rgba(255,140,115,0)");
+  fctx.fillStyle = g; fctx.fillRect(20, 66, 36, 26);
+
+  const faceTex = new THREE.CanvasTexture(faceCanvas);
+  faceTex.encoding = THREE.sRGBEncoding;
+  faceTex.needsUpdate = true;
+  const faceMat = new THREE.MeshBasicMaterial({ map: faceTex, transparent: true, side: THREE.DoubleSide });
+  const facePlane = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), faceMat);
+  facePlane.position.set(0, 0.46, 0.26);
+  avatar.add(facePlane);
+
   const hair = new THREE.Mesh(new THREE.SphereGeometry(0.235, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMaterial);
   hair.position.y = 0.58;
   hair.rotation.x = Math.PI;

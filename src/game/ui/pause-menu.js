@@ -70,7 +70,7 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
     sections.style.gap = "12px";
     right.appendChild(sections);
 
-    sections.appendChild(section("Controls", ["WASD movement", "Space jump / double jump", "Shift dash", "M world menu", "P / Esc pause"]));
+    sections.appendChild(section("Controls", ["WASD movement", "Space jump / double jump", "Shift dash", "F 360 slash", "M world menu", "P / Esc pause"]));
     sections.appendChild(section("Progress", [`Bosses cleared: ${model.bossesClearedCount}/${model.worldCount}`, `Skills owned: ${model.skillCount}`, `Saved world: ${model.saveSummary}`, model.finalWin ? "Campaign complete." : "Keep collecting key cubes."]));
 
     const story = document.createElement("div");

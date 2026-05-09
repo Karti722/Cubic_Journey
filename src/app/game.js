@@ -43,7 +43,8 @@ export function startGame(uiElement, options = {}) {
   const player = visuals.createPlayerAvatar();
   player.spinActive = false;
   player.spinRemaining = 0;
-  player.spinSpeed = Math.PI * 4.0; // radians per second when spinning
+  // tuned: faster spinSpeed for crisp 180° turns (~0.18s)
+  player.spinSpeed = Math.PI * 5.5; // radians per second when spinning
   player.position.set(0, 3, 0);
   scene.add(player);
 
@@ -112,9 +113,12 @@ export function startGame(uiElement, options = {}) {
     chargeHeldSince: null,
     chargeCooldownUntil: 0,
     chargeLastVisual: 0,
+    // whether we've emitted an immediate slash for the current key press
+    slashFiredThisPress: false,
     // Whether we've already handled advancing after a win
     winHandled: false
   };
+
 
 
   let campaignInfoReturnToPause = false;
@@ -130,17 +134,14 @@ export function startGame(uiElement, options = {}) {
   let debugToggleLatch = false;
   let skipKeyLatch = false;
   let lastMoveSignZ = 0;
+  let prevSlashDown = false;
+  let globalSlashCooldownUntil = 0;
+  let minigameIntroTimer = null;
+  let minigameAdvanceTimer = null;
 
   function isSwordSlashPressed() {
-    const pressed = keys.KeyF || keys.Numpad0;
-    if (pressed) {
-      if (minigameState.slashLatch) return false;
-      minigameState.slashLatch = true;
-      return true;
-    }
-
-    minigameState.slashLatch = false;
-    return false;
+    // Use the controls action so bindings apply (e.g. KeyF, Numpad0)
+    return controls.isActionPressed("slash");
   }
 
   function isMinigameConfirmPressed() {
@@ -177,15 +178,22 @@ export function startGame(uiElement, options = {}) {
     minigameState.giantHealth = giantHealth;
     minigameState.won = total > 0 && defeated >= total;
     if (minigameState.won && !minigameState.winHandled) {
+      // prevent multiple advance timers stacking
       minigameState.winHandled = true;
-      setTimeout(() => {
+      if (minigameAdvanceTimer) {
+        clearTimeout(minigameAdvanceTimer);
+        minigameAdvanceTimer = null;
+      }
+      const nextLevel = minigameState.level + 1; // capture target now to avoid mutation before timeout
+      minigameAdvanceTimer = setTimeout(() => {
+        minigameAdvanceTimer = null;
         if (!minigameState.active) return;
-        if (minigameState.level >= minigameState.maxLevel) {
+        if (nextLevel > minigameState.maxLevel) {
           // show an ending screen and return to title
           showMinigameEnding();
           return;
         }
-        enterMinigameLevel(minigameState.level + 1);
+        enterMinigameLevel(nextLevel);
       }, 600);
     }
   }
@@ -196,15 +204,41 @@ export function startGame(uiElement, options = {}) {
 
   function enterMinigameLevel(level) {
     const clampedLevel = Math.max(1, Math.min(MINIGAME_MAX_LEVEL, Math.floor(level)));
+    // mark transitioning: prevent auto-advance triggers from previous runtime
     minigameState.active = true;
     minigameState.won = false;
+    minigameState.winHandled = true;
     minigameState.level = clampedLevel;
     minigameState.slashCooldownUntil = 0;
     minigameState.slashAnimUntil = 0;
     minigameState.winHandled = false;
     minigameState.chargeHeldSince = null;
     minigameState.chargeCooldownUntil = 0;
-    loadDefinition(createSwordMinigameDefinition(clampedLevel), `Loading goblin wildlands L${clampedLevel}...`);
+    // show a level banner then load the level after a short intro delay to soften transitions
+    const introMs = 700;
+    try {
+      if (hud && typeof hud.showCenterBanner === "function") {
+        hud.showCenterBanner(`Slash Minigame`, `Level ${clampedLevel}` , introMs);
+      }
+    } catch (e) {
+      // ignore UI errors
+    }
+    // dispose current runtime immediately so refreshMinigameStatus won't see defeated enemies
+    try {
+      if (runtime) {
+        runtime.dispose();
+        runtime = null;
+      }
+    } catch (e) {}
+
+    if (minigameIntroTimer) {
+      clearTimeout(minigameIntroTimer);
+      minigameIntroTimer = null;
+    }
+    minigameIntroTimer = setTimeout(() => {
+      minigameIntroTimer = null;
+      loadDefinition(createSwordMinigameDefinition(clampedLevel), `Loading goblin wildlands L${clampedLevel}...`);
+    }, introMs);
   }
 
   function loadDefinition(definition, loadingMessage = "Building the world...") {
@@ -222,6 +256,8 @@ export function startGame(uiElement, options = {}) {
 
       if (runtime) runtime.dispose();
       runtime = buildWorldRuntime(scene, definition, visuals);
+      // clear the transitioning/handled flag now that a fresh runtime exists
+      minigameState.winHandled = false;
       minigameState.active = definition.type === "minigame";
       if (minigameState.active) {
         minigameState.level = Math.max(1, definition.minigameLevel || minigameState.level || 1);
@@ -581,10 +617,13 @@ export function startGame(uiElement, options = {}) {
         keyCubes: campaign.state.keyCubes,
         currency: campaign.state.currency,
         skillCount: countOwnedSkills(campaign.state.skills),
+        // whether the charged explosion is currently available (not on cooldown)
+        chargeReady: (performance.now() - gameStartTimeMs) / 1000 >= (minigameState.chargeCooldownUntil || 0) && !minigameState.won,
+        // show a friendly level-clear message but do not instruct pressing Enter (auto-advance)
         skipPrompt: minigameState.won
           ? (minigameState.level >= minigameState.maxLevel
-            ? "All levels clear! Press Enter to return to title"
-            : `Level clear! Press Enter for Level ${Math.min(minigameState.maxLevel, minigameState.level + 1)}`)
+            ? "All levels clear!"
+            : `Level clear!`)
           : `Press F for 360 slash (Giant HP: ${minigameState.giantHealth}/${Math.max(1, minigameState.giantMaxHealth)})`,
         storyLine: "Open-world sword trial with moving platforms, bomb hazards, and diving goblins.",
         isBossStage: minigameState.giantHealth > 0,
@@ -1087,35 +1126,86 @@ export function startGame(uiElement, options = {}) {
     }
 
     if (minigameState.active) {
-      // Charge explosion: press and hold F (or Numpad0). Release after 1s to detonate.
-      const swordKeyDown = keys.KeyF || keys.Numpad0;
-      if (swordKeyDown) {
-        if (minigameState.chargeHeldSince == null) minigameState.chargeHeldSince = elapsed;
-        const held = elapsed - (minigameState.chargeHeldSince || 0);
-        const ratio = Math.min(1, held / 1.0);
-        // visual indicator while charging (throttled)
-        if (elapsed - (minigameState.chargeLastVisual || 0) >= 0.12) {
-          effects.emitSlash(player.position, { x: 0, z: 1 }, {
-            color: ratio >= 1 ? 0xffe8cc : 0xffd1b0,
-            scale: 1.6 + ratio * 3.2,
-            life: 0.24,
-            fullCircle: true,
-            opacity: 0.72
+      // Buffered tap vs hold heuristic: short taps register as slashes,
+      // holds starting after `chargeStartDelay` begin charging for explosion.
+      const slashDown = controls.isActionDown("slash");
+      const slashPressed = controls.isActionPressed("slash");
+      const tapWindow = 0.06; // small window to consider fast taps
+      const chargeStartDelay = 0.18; // how long before we treat hold as charge
+
+      if (slashPressed) {
+        minigameState.slashBufferAt = elapsed;
+        // Immediate full-circle slash on keydown for instant feel (short taps).
+        if (minigameState.chargeHeldSince == null && elapsed >= minigameState.slashCooldownUntil && !minigameState.won) {
+          const direction = getDashDirection();
+          const slashResult = resolveSwordSlash(player, runtime.enemies, {
+            radius: 3.95,
+            damage: 1,
+            forwardX: direction.x,
+            forwardZ: direction.z,
+            forwardDotThreshold: -0.15,
+            fullCircle: true
           });
-          minigameState.chargeLastVisual = elapsed;
+          minigameState.slashCooldownUntil = elapsed + 0.22;
+          minigameState.slashAnimUntil = elapsed + 0.19;
+          audio.playSfx("enemy", slashResult.hits > 0 ? 0.72 : 0.48);
+          effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
+          effects.emitSlash(player.position, direction, {
+            color: 0xffd45c,
+            scale: slashResult.hits > 0 ? 2.35 : 2.15,
+            life: 0.18,
+            fullCircle: true
+          });
+          if (slashResult.defeated > 0) {
+            audio.playSfx("enemyDefeat", 0.84);
+            effects.emit("dash", player.position, { x: direction.x * 0.6, y: 0.5, z: direction.z * 0.6 }, 0.7, 10);
+          }
+          refreshMinigameStatus();
+          minigameState.slashFiredThisPress = true;
+        } else {
+          minigameState.slashFiredThisPress = false;
+        }
+      }
+
+      // start charging only after the chargeStartDelay has passed since keydown
+      if (slashDown) {
+        if (minigameState.slashBufferAt != null && minigameState.chargeHeldSince == null) {
+          const since = elapsed - minigameState.slashBufferAt;
+          if (since >= chargeStartDelay && elapsed >= ((minigameState.chargeCooldownUntil) || 0)) {
+            minigameState.chargeHeldSince = minigameState.slashBufferAt;
+            minigameState.slashBufferAt  = null;
+            minigameState.chargeLastVisual = 0;
+          }
+        }
+
+        // while charging, emit visuals
+        if (minigameState.chargeHeldSince != null) {
+          const held = elapsed - (minigameState.chargeHeldSince || 0);
+          const ratio = Math.min(1, held / 1.0);
+          if (elapsed - (minigameState.chargeLastVisual || 0) >= 0.12) {
+            const ready = ratio >= 1 && elapsed >= ((minigameState.chargeCooldownUntil) || 0);
+            effects.emitSlash(player.position, { x: 0, z: 1 }, {
+              color: ready ? 0xff3b3b : 0xffffff,
+              scale: ready ? 4.2 : (1.6 + ratio * 3.2),
+              life: ready ? 0.36 : 0.24,
+              fullCircle: true,
+              opacity: ready ? 0.96 : 0.72
+            });
+            minigameState.chargeLastVisual = elapsed;
+          }
         }
       } else {
-        // released: if we were charging long enough, detonate
+        // released: decide between instant tap, short tap, or charged explosion
         if (minigameState.chargeHeldSince != null) {
           const held = elapsed - minigameState.chargeHeldSince;
           if (held >= 1.0 && elapsed >= (minigameState.chargeCooldownUntil || 0) && !minigameState.won) {
             audio.playSfx("explosion", 0.95);
-            // bigger visible explosion
-            effects.emitExplosion(player.position, { scale: 11.2, life: 1.0, color: 0xffe8cc });
             const baseBlast = 5.0;
             const blastRadius = baseBlast * 3.0; // 3x larger sphere
+            const explosionScale = Math.max(10, Math.round(blastRadius * 0.85 * 10) / 10);
+            effects.emitExplosion(player.position, { scale: explosionScale, life: 1.0, color: 0xffe8cc });
             if (cameraController && typeof cameraController.shake === "function") {
-              cameraController.shake(1.4, 0.6);
+              cameraController.shake(1.6, 0.32);
             }
             let obliterated = 0;
             for (const enemy of runtime.enemies || []) {
@@ -1134,40 +1224,91 @@ export function startGame(uiElement, options = {}) {
             effects.emit("dash", player.position, { x: 0, y: 0.8, z: 0 }, 1.2, 18);
             minigameState.chargeCooldownUntil = elapsed + 8.0;
             refreshMinigameStatus();
+          } else if (held > 0 && held < 1.0) {
+            // released after starting charge but not fully charged: treat as short tap
+            const direction = getDashDirection();
+            const slashResult = resolveSwordSlash(player, runtime.enemies, {
+              radius: 3.95,
+              damage: 1,
+              forwardX: direction.x,
+              forwardZ: direction.z,
+              forwardDotThreshold: -0.15,
+              fullCircle: true
+            });
+            minigameState.slashCooldownUntil = elapsed + 0.22;
+            minigameState.slashAnimUntil = elapsed + 0.19;
+            audio.playSfx("enemy", slashResult.hits > 0 ? 0.72 : 0.48);
+            effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
+            effects.emitSlash(player.position, direction, {
+              color: 0xffd45c,
+              scale: slashResult.hits > 0 ? 2.35 : 2.15,
+              life: 0.18,
+              fullCircle: true
+            });
+            if (slashResult.defeated > 0) {
+              audio.playSfx("enemyDefeat", 0.84);
+              effects.emit("dash", player.position, { x: direction.x * 0.6, y: 0.5, z: direction.z * 0.6 }, 0.7, 10);
+            }
+            refreshMinigameStatus();
+          }
+        } else if (minigameState.slashBufferAt != null) {
+          const bufferedHeld = elapsed - minigameState.slashBufferAt;
+          // quick tap -> instant-feel slash (on release within tapWindow)
+          if (bufferedHeld <= tapWindow && elapsed >= minigameState.slashCooldownUntil && !minigameState.won && !minigameState.slashFiredThisPress) {
+            const direction = getDashDirection();
+            const slashResult = resolveSwordSlash(player, runtime.enemies, {
+              radius: 3.95,
+              damage: 1,
+              forwardX: direction.x,
+              forwardZ: direction.z,
+              forwardDotThreshold: -0.15,
+              fullCircle: true
+            });
+            minigameState.slashCooldownUntil = elapsed + 0.22;
+            minigameState.slashAnimUntil = elapsed + 0.19;
+            audio.playSfx("enemy", slashResult.hits > 0 ? 0.72 : 0.48);
+            effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
+            effects.emitSlash(player.position, direction, {
+              color: 0xffd45c,
+              scale: slashResult.hits > 0 ? 2.35 : 2.15,
+              life: 0.18,
+              fullCircle: true
+            });
+            if (slashResult.defeated > 0) {
+              audio.playSfx("enemyDefeat", 0.84);
+              effects.emit("dash", player.position, { x: direction.x * 0.6, y: 0.5, z: direction.z * 0.6 }, 0.7, 10);
+            }
+            refreshMinigameStatus();
+            minigameState.slashFiredThisPress = false;
           }
         }
-        minigameState.chargeHeldSince = null;
-      }
 
-      const swordSlashPressed = isSwordSlashPressed();
-      if (swordSlashPressed && elapsed >= minigameState.slashCooldownUntil && !minigameState.won) {
+        minigameState.chargeHeldSince = null;
+        minigameState.slashBufferAt = null;
+      }
+    }
+
+    // Restore regular forward slash when not in the minigame.
+    if (!minigameState.active) {
+      if (controls.isActionPressed("slash") && elapsed >= globalSlashCooldownUntil) {
         const direction = getDashDirection();
         const slashResult = resolveSwordSlash(player, runtime.enemies, {
           radius: 3.95,
           damage: 1,
           forwardX: direction.x,
           forwardZ: direction.z,
-          forwardDotThreshold: -0.15,
           fullCircle: true
         });
-
-        minigameState.slashCooldownUntil = elapsed + 0.22;
-        minigameState.slashAnimUntil = elapsed + 0.19;
-        audio.playSfx("enemy", slashResult.hits > 0 ? 0.72 : 0.48);
+        globalSlashCooldownUntil = elapsed + 0.26;
+        audio.playSfx("enemy", slashResult.hits > 0 ? 0.68 : 0.42);
         effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
         effects.emitSlash(player.position, direction, {
-          color: slashResult.hits > 0 ? 0xe6ffe4 : 0xbce9ff,
+          color: 0xffd45c,
           scale: slashResult.hits > 0 ? 2.35 : 2.15,
           life: 0.18,
           fullCircle: true
         });
-
-        if (slashResult.defeated > 0) {
-          audio.playSfx("enemyDefeat", 0.84);
-          effects.emit("dash", player.position, { x: direction.x * 0.6, y: 0.5, z: direction.z * 0.6 }, 0.7, 10);
-        }
-
-        refreshMinigameStatus();
+        if (slashResult.defeated > 0) audio.playSfx("enemyDefeat", 0.8);
       }
     }
 
@@ -1264,17 +1405,21 @@ export function startGame(uiElement, options = {}) {
       const baseYaw = Math.atan2(velocity.x, velocity.z);
       const moveSignZ = Math.sign(velocity.z || 0);
 
-      // trigger a single 360 spin when flipping forward/back direction
-      if (moveSignZ !== lastMoveSignZ && Math.abs(velocity.z) > 0.8 && !player.spinActive) {
+      // compute angular difference between desired move yaw and current facing
+      const angleDiff = Math.abs(normalizeAngle(baseYaw - previousRotationY));
+      const opposite = angleDiff >= (Math.PI * 0.9); // roughly 162°+ considered opposite
+
+      // if the player is moving roughly opposite their facing, do a smooth 180° turn
+      if (opposite && Math.abs(velocity.z) > 0.8 && !player.spinActive) {
         player.spinActive = true;
-        player.spinRemaining = Math.PI * 2;
-        player.spinBaseYaw = baseYaw;
+        player.spinRemaining = Math.PI; // 180 degrees
+        player.spinBaseYaw = previousRotationY;
       }
 
       if (player.spinActive) {
         const rotateDelta = player.spinSpeed * dt;
         player.spinRemaining -= rotateDelta;
-        const spun = Math.PI * 2 - Math.max(0, player.spinRemaining);
+        const spun = Math.PI - Math.max(0, player.spinRemaining);
         player.rotation.y = (player.spinBaseYaw || baseYaw) + spun;
         if (player.spinRemaining <= 0) {
           player.spinActive = false;

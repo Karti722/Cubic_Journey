@@ -142,7 +142,7 @@ export function createControlsMenu({ getBindings, onRebind, onReset, onClose }) 
   return { open, close, render, isOpen: () => isOpen };
 }
 
-const ACTION_ORDER = ["moveForward", "moveBackward", "moveLeft", "moveRight", "jump", "dash", "pause", "worldMenu", "hub", "interact", "shop", "controls"];
+const ACTION_ORDER = ["moveForward", "moveBackward", "moveLeft", "moveRight", "jump", "dash", "slash", "pause", "worldMenu", "hub", "interact", "shop", "controls"];
 
 function getActionLabel(action) {
   const labels = {
@@ -152,6 +152,7 @@ function getActionLabel(action) {
     moveRight: "Move Right",
     jump: "Jump",
     dash: "Dash",
+    slash: "Slash",
     pause: "Pause",
     worldMenu: "World Menu",
     hub: "Return to Hub",

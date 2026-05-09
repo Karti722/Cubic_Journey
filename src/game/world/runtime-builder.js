@@ -1,13 +1,14 @@
 import { THREE } from "../../engine/three.js";
 
-export function buildWorldRuntime(scene, definition) {
+export function buildWorldRuntime(scene, definition, visuals) {
+  const { textures } = visuals;
   scene.background = new THREE.Color(definition.skyColor);
   scene.fog = new THREE.Fog(definition.skyColor, 26, 180);
 
   const root = new THREE.Group();
   scene.add(root);
 
-  const atmosphere = buildAtmosphere(definition.skyColor);
+  const atmosphere = buildAtmosphere(definition.skyColor, textures);
   root.add(atmosphere.group);
 
   const colliders = [];
@@ -22,6 +23,7 @@ export function buildWorldRuntime(scene, definition) {
       new THREE.BoxGeometry(platform.sx, platform.sy, platform.sz),
       new THREE.MeshStandardMaterial({
         color: platform.color,
+        map: textures.stone,
         roughness: 0.7,
         metalness: 0.16,
         emissive: tintColor(platform.color, 0.12),
@@ -53,7 +55,7 @@ export function buildWorldRuntime(scene, definition) {
   for (const item of definition.collectibles) {
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(0.4, 10, 10),
-      new THREE.MeshStandardMaterial({ color: 0xffd84d, emissive: 0xffaa22, emissiveIntensity: 0.7, roughness: 0.35, metalness: 0.25 })
+      new THREE.MeshStandardMaterial({ color: 0xffd84d, map: textures.coin, emissive: 0xffaa22, emissiveIntensity: 0.7, roughness: 0.35, metalness: 0.25 })
     );
     mesh.position.set(item.x, item.y, item.z);
     root.add(mesh);
@@ -63,7 +65,7 @@ export function buildWorldRuntime(scene, definition) {
   for (const pad of definition.jumpPads || []) {
     const mesh = new THREE.Mesh(
       new THREE.CylinderGeometry(0.8, 0.8, 0.35, 16),
-      new THREE.MeshStandardMaterial({ color: 0x33ff99, emissive: 0x00dd88, emissiveIntensity: 0.6, roughness: 0.45, metalness: 0.2 })
+      new THREE.MeshStandardMaterial({ color: 0x33ff99, map: textures.jumpPad, emissive: 0x00dd88, emissiveIntensity: 0.6, roughness: 0.45, metalness: 0.2 })
     );
     mesh.position.set(pad.x, pad.y, pad.z);
     root.add(mesh);
@@ -73,7 +75,7 @@ export function buildWorldRuntime(scene, definition) {
   for (const orb of definition.dashOrbs || []) {
     const mesh = new THREE.Mesh(
       new THREE.IcosahedronGeometry(0.45, 0),
-      new THREE.MeshStandardMaterial({ color: 0x6ad7ff, emissive: 0x2bb3ff, emissiveIntensity: 0.75, roughness: 0.25, metalness: 0.45 })
+      new THREE.MeshStandardMaterial({ color: 0x6ad7ff, map: textures.energy, emissive: 0x2bb3ff, emissiveIntensity: 0.75, roughness: 0.25, metalness: 0.45 })
     );
     mesh.position.set(orb.x, orb.y, orb.z);
     root.add(mesh);
@@ -81,10 +83,7 @@ export function buildWorldRuntime(scene, definition) {
   }
 
   for (const enemyDef of definition.enemies || []) {
-    const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(enemyDef.radius || 0.6, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0xff4444, emissive: 0x662222, emissiveIntensity: 0.55, roughness: 0.35, metalness: 0.12 })
-    );
+    const mesh = visuals.createGoblinEnemy();
     mesh.position.set(enemyDef.x, enemyDef.y, enemyDef.z);
     root.add(mesh);
     enemies.push({
@@ -104,7 +103,7 @@ export function buildWorldRuntime(scene, definition) {
   if (definition.goal) {
     goal = new THREE.Mesh(
       new THREE.BoxGeometry(1.7, 1.7, 1.7),
-      new THREE.MeshStandardMaterial({ color: definition.goal.color, emissive: tintColor(definition.goal.color, 0.35), emissiveIntensity: 0.8, roughness: 0.22, metalness: 0.35 })
+      new THREE.MeshStandardMaterial({ color: definition.goal.color, map: textures.goal, emissive: tintColor(definition.goal.color, 0.35), emissiveIntensity: 0.8, roughness: 0.22, metalness: 0.35 })
     );
     goal.position.set(definition.goal.x, definition.goal.y, definition.goal.z);
     goal.castShadow = true;
@@ -113,7 +112,7 @@ export function buildWorldRuntime(scene, definition) {
     if (definition.isBossStage) {
       const base = new THREE.Mesh(
         new THREE.CylinderGeometry(1.4, 1.8, 0.6, 18),
-        new THREE.MeshStandardMaterial({ color: 0x111111 })
+        new THREE.MeshStandardMaterial({ color: 0x111111, map: textures.stone, roughness: 0.95, metalness: 0.02 })
       );
       base.position.set(definition.goal.x, definition.goal.y - 1.2, definition.goal.z);
       root.add(base);
@@ -125,6 +124,7 @@ export function buildWorldRuntime(scene, definition) {
       new THREE.TorusGeometry(1.1, 0.25, 10, 24),
       new THREE.MeshStandardMaterial({
         color: portal.unlocked ? portal.color : 0x555555,
+        map: textures.portal,
         emissive: portal.unlocked ? tintColor(portal.color, 0.28) : 0x111111,
         emissiveIntensity: portal.unlocked ? 0.7 : 0.15,
         roughness: 0.35,
@@ -139,6 +139,7 @@ export function buildWorldRuntime(scene, definition) {
       new THREE.SphereGeometry(0.45, 12, 12),
       new THREE.MeshStandardMaterial({
         color: portal.unlocked ? 0xffffff : 0x333333,
+        map: textures.portal,
         emissive: portal.unlocked ? 0x8ef4ff : 0x111111,
         emissiveIntensity: portal.unlocked ? 0.75 : 0.1,
         roughness: 0.3,
@@ -184,11 +185,12 @@ export function buildWorldRuntime(scene, definition) {
     for (const enemy of enemies) {
       if (enemy.defeated) continue;
       const pulse = (Math.sin(elapsed * 5 + enemy.phase) + 1) / 2;
-      const color = enemy.mesh.material.color;
-      color.setRGB(1, 0.22 + pulse * 0.78, 0.22 + pulse * 0.78);
+      if (enemy.mesh.bodyMaterial?.color) {
+        enemy.mesh.bodyMaterial.color.setRGB(0.28 + pulse * 0.26, 0.72 + pulse * 0.18, 0.2 + pulse * 0.12);
+      }
 
-      if (enemy.mesh.material.emissive) {
-        enemy.mesh.material.emissive.setRGB(0.45 + pulse * 0.35, 0.08 + pulse * 0.2, 0.08 + pulse * 0.2);
+      if (enemy.mesh.bodyMaterial?.emissive) {
+        enemy.mesh.bodyMaterial.emissive.setRGB(0.04 + pulse * 0.1, 0.14 + pulse * 0.18, 0.04 + pulse * 0.08);
       }
 
       enemy.mesh.position.x = enemy.originX + Math.sin(elapsed * enemy.driftX + enemy.phase) * 0.9;
@@ -234,12 +236,12 @@ export function buildWorldRuntime(scene, definition) {
   };
 }
 
-function buildAtmosphere(skyColor) {
+function buildAtmosphere(skyColor, textures) {
   const group = new THREE.Group();
 
   const skyDome = new THREE.Mesh(
     new THREE.SphereGeometry(900, 28, 18),
-    new THREE.MeshBasicMaterial({ color: tintColor(skyColor, 0.08), side: THREE.BackSide, transparent: true, opacity: 0.98 })
+    new THREE.MeshBasicMaterial({ color: tintColor(skyColor, 0.08), map: textures.sky, side: THREE.BackSide, transparent: true, opacity: 0.98 })
   );
   group.add(skyDome);
 

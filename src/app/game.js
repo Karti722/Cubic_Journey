@@ -30,23 +30,15 @@ import { createAudioEngine } from "../game/audio/audio-engine.js";
 import { loadControlBindings, resetControlBindings, saveControlBindings } from "../game/input/control-settings.js";
 import { createActionEffects } from "../game/effects/action-effects.js";
 import { SKILL_DEFINITIONS } from "../game/skills/skill-data.js";
+import { createProceduralVisuals } from "../game/render/procedural-visuals.js";
 
 export function startGame(uiElement) {
   const { scene, camera, renderer, clock } = createRenderContext();
   attachResize(camera, renderer);
   const gameStartTimeMs = performance.now();
 
-  const playerMaterial = new THREE.MeshStandardMaterial({
-    color: 0xff5555,
-    emissive: 0x000000,
-    emissiveIntensity: 1
-  });
-
-  const player = new THREE.Mesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    playerMaterial
-  );
-  player.castShadow = true;
+  const visuals = createProceduralVisuals();
+  const player = visuals.createPlayerAvatar();
   player.position.set(0, 3, 0);
   scene.add(player);
 
@@ -122,7 +114,7 @@ export function startGame(uiElement) {
       if (loadToken !== worldLoadToken) return;
 
       if (runtime) runtime.dispose();
-      runtime = buildWorldRuntime(scene, definition);
+      runtime = buildWorldRuntime(scene, definition, visuals);
       player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
       velocity.set(0, 0, 0);
       resetAbilityState(ability, PLAYER_CONFIG.extraAirJumps);
@@ -179,7 +171,9 @@ export function startGame(uiElement) {
   function triggerDamageFeedback(elapsed) {
     damageCooldownUntil = elapsed + 0.85;
     audio.playSfx("damage", 0.82);
-    playerMaterial.emissive.setHex(0xff3311);
+    if (player.bodyMaterial?.emissive) {
+      player.bodyMaterial.emissive.setHex(0xff3311);
+    }
   }
 
   function setMusicForCurrentState() {
@@ -926,10 +920,14 @@ export function startGame(uiElement) {
     }
 
     if (elapsed >= damageCooldownUntil) {
-      playerMaterial.emissive.setHex(0x000000);
+      if (player.bodyMaterial?.emissive) {
+        player.bodyMaterial.emissive.setHex(0x000000);
+      }
     } else {
       const pulse = (Math.sin(elapsed * 30) + 1) / 2;
-      playerMaterial.emissive.setHex(pulse > 0.5 ? 0xff6633 : 0x441100);
+      if (player.bodyMaterial?.emissive) {
+        player.bodyMaterial.emissive.setHex(pulse > 0.5 ? 0xff6633 : 0x441100);
+      }
     }
 
     if (physics.fell) {

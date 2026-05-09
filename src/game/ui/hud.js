@@ -183,7 +183,7 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
   chargeChip.style.padding = "8px 10px";
   chargeChip.style.fontWeight = "800";
   chargeChip.style.letterSpacing = "0.03em";
-  chargeChip.textContent = "Hold F to Charge";
+  chargeChip.textContent = `Hold ${localStorage.getItem("cubic-journey-controls-v1")} to Charge`;
   fpsDock.appendChild(chargeChip);
 
   function setHudCollapsed(nextState) {
@@ -383,8 +383,13 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
       chargeChip.style.background = "rgba(255, 59, 59, 0.94)";
       chargeChip.style.border = "1px solid rgba(255, 59, 59, 0.28)";
       chargeChip.style.color = "white";
+      chargeChip.textContent = `Hold slash button to Charge Explosion`;
     } else {
-      chargeChip.style.display = "none";
+      chargeChip.style.display = "inline-flex";
+      chargeChip.style.background = "rgba(15, 14, 14, 0.94)";
+      chargeChip.style.border = "1px solid rgba(255, 59, 59, 0.28)";
+      chargeChip.style.color = "white";
+      chargeChip.textContent = `Spam slash button to hit goblins around you`;
     }
 
   }

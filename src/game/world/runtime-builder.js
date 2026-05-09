@@ -151,7 +151,7 @@ export function buildWorldRuntime(scene, definition, visuals) {
       exploded: false,
       originX: bombDef.x,
       originZ: bombDef.z,
-      baseSpeed: bombDef.baseSpeed ?? 1.1,
+      baseSpeed: bombDef.baseSpeed ?? 5.65,
       chaseWeight: bombDef.chaseWeight ?? 0.52,
       avoidWeight: bombDef.avoidWeight ?? 0.2,
       velX: 0,

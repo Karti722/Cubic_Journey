@@ -51,6 +51,27 @@ export function createActionEffects(scene) {
     });
   }
 
+  const sphereSlashes = [];
+  for (let i = 0; i < 8; i += 1) {
+    const sphereMat = new THREE.MeshBasicMaterial({
+      color: 0xf7f7f7,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending
+    });
+    const sphereMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 12), sphereMat);
+    sphereMesh.visible = false;
+    root.add(sphereMesh);
+    sphereSlashes.push({
+      mesh: sphereMesh,
+      active: false,
+      ttl: 0,
+      life: 0.18
+    });
+  }
+
   const explosions = [];
   for (let i = 0; i < 6; i += 1) {
     const mat = new THREE.MeshBasicMaterial({
@@ -89,6 +110,25 @@ export function createActionEffects(scene) {
   }
 
   function emitSlash(position, direction, options = {}) {
+    const life = options.life ?? 0.2;
+    const fullCircle = options.fullCircle ?? false;
+    const useSphere = options.sphere ?? false;
+
+    if (useSphere) {
+      const sphere = sphereSlashes.find(item => !item.active);
+      if (!sphere) return;
+      sphere.active = true;
+      sphere.life = life;
+      sphere.ttl = life;
+      sphere.mesh.visible = true;
+      // center on player so radius matches hit checks against player.position
+      sphere.mesh.position.set(position.x, position.y + 1.1, position.z);
+      sphere.mesh.scale.setScalar(options.scale ?? 1.0);
+      sphere.mesh.material.opacity = options.opacity ?? 0.92;
+      sphere.mesh.material.color.setHex(options.color ?? 0xe8ffe8);
+      return;
+    }
+
     const slash = slashes.find(item => !item.active);
     if (!slash) return;
 
@@ -98,8 +138,6 @@ export function createActionEffects(scene) {
     const nx = len > 0.0001 ? dirX / len : 0;
     const nz = len > 0.0001 ? dirZ / len : 1;
     const yaw = Math.atan2(nx, nz);
-    const life = options.life ?? 0.2;
-    const fullCircle = options.fullCircle ?? false;
 
     slash.active = true;
     slash.life = life;
@@ -139,6 +177,20 @@ export function createActionEffects(scene) {
       if (slash.ttl <= 0) {
         slash.active = false;
         slash.mesh.visible = false;
+      }
+    }
+
+    for (const sphere of sphereSlashes) {
+      if (!sphere.active) continue;
+
+      sphere.ttl -= dt;
+      const t = Math.max(0, sphere.ttl / Math.max(0.0001, sphere.life));
+      sphere.mesh.material.opacity = t * 0.92;
+      sphere.mesh.scale.multiplyScalar(1 + dt * 1.2);
+
+      if (sphere.ttl <= 0) {
+        sphere.active = false;
+        sphere.mesh.visible = false;
       }
     }
 

@@ -118,6 +118,8 @@ export function startGame(uiElement, options = {}) {
     // Whether we've already handled advancing after a win
     winHandled: false
   };
+  // Regular (non-charged) sphere slash radius and visual scale (keeps VFX and hit radius identical)
+  const REGULAR_SLASH_RADIUS = 2.25;
 
 
 
@@ -624,7 +626,9 @@ export function startGame(uiElement, options = {}) {
           ? (minigameState.level >= minigameState.maxLevel
             ? "All levels clear!"
             : `Level clear!`)
-          : `Press F for 360 slash (Giant HP: ${minigameState.giantHealth}/${Math.max(1, minigameState.giantMaxHealth)})`,
+          : (minigameState.giantHealth > 0
+            ? `Giant HP: ${minigameState.giantHealth}/${Math.max(1, minigameState.giantMaxHealth)}`
+            : ""),
         storyLine: "Open-world sword trial with moving platforms, bomb hazards, and diving goblins.",
         isBossStage: minigameState.giantHealth > 0,
         bossName: minigameState.giantHealth > 0 ? "Giant Goblin" : ""
@@ -1139,7 +1143,7 @@ export function startGame(uiElement, options = {}) {
         if (minigameState.chargeHeldSince == null && elapsed >= minigameState.slashCooldownUntil && !minigameState.won) {
           const direction = getDashDirection();
           const slashResult = resolveSwordSlash(player, runtime.enemies, {
-            radius: 3.95,
+            radius: REGULAR_SLASH_RADIUS,
             damage: 1,
             forwardX: direction.x,
             forwardZ: direction.z,
@@ -1152,9 +1156,10 @@ export function startGame(uiElement, options = {}) {
           effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
           effects.emitSlash(player.position, direction, {
             color: 0xffd45c,
-            scale: slashResult.hits > 0 ? 2.35 : 2.15,
+            scale: REGULAR_SLASH_RADIUS,
             life: 0.18,
-            fullCircle: true
+            fullCircle: true,
+            sphere: true
           });
           if (slashResult.defeated > 0) {
             audio.playSfx("enemyDefeat", 0.84);
@@ -1228,7 +1233,7 @@ export function startGame(uiElement, options = {}) {
             // released after starting charge but not fully charged: treat as short tap
             const direction = getDashDirection();
             const slashResult = resolveSwordSlash(player, runtime.enemies, {
-              radius: 3.95,
+              radius: REGULAR_SLASH_RADIUS,
               damage: 1,
               forwardX: direction.x,
               forwardZ: direction.z,
@@ -1241,9 +1246,10 @@ export function startGame(uiElement, options = {}) {
             effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
             effects.emitSlash(player.position, direction, {
               color: 0xffd45c,
-              scale: slashResult.hits > 0 ? 2.35 : 2.15,
+              scale: REGULAR_SLASH_RADIUS,
               life: 0.18,
-              fullCircle: true
+              fullCircle: true,
+              sphere: true
             });
             if (slashResult.defeated > 0) {
               audio.playSfx("enemyDefeat", 0.84);
@@ -1257,7 +1263,7 @@ export function startGame(uiElement, options = {}) {
           if (bufferedHeld <= tapWindow && elapsed >= minigameState.slashCooldownUntil && !minigameState.won && !minigameState.slashFiredThisPress) {
             const direction = getDashDirection();
             const slashResult = resolveSwordSlash(player, runtime.enemies, {
-              radius: 3.95,
+              radius: REGULAR_SLASH_RADIUS,
               damage: 1,
               forwardX: direction.x,
               forwardZ: direction.z,
@@ -1270,9 +1276,10 @@ export function startGame(uiElement, options = {}) {
             effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
             effects.emitSlash(player.position, direction, {
               color: 0xffd45c,
-              scale: slashResult.hits > 0 ? 2.35 : 2.15,
+              scale: REGULAR_SLASH_RADIUS,
               life: 0.18,
-              fullCircle: true
+              fullCircle: true,
+              sphere: true
             });
             if (slashResult.defeated > 0) {
               audio.playSfx("enemyDefeat", 0.84);
@@ -1293,7 +1300,7 @@ export function startGame(uiElement, options = {}) {
       if (controls.isActionPressed("slash") && elapsed >= globalSlashCooldownUntil) {
         const direction = getDashDirection();
         const slashResult = resolveSwordSlash(player, runtime.enemies, {
-          radius: 3.95,
+          radius: REGULAR_SLASH_RADIUS,
           damage: 1,
           forwardX: direction.x,
           forwardZ: direction.z,
@@ -1304,9 +1311,10 @@ export function startGame(uiElement, options = {}) {
         effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
         effects.emitSlash(player.position, direction, {
           color: 0xffd45c,
-          scale: slashResult.hits > 0 ? 2.35 : 2.15,
+          scale: REGULAR_SLASH_RADIUS,
           life: 0.18,
-          fullCircle: true
+          fullCircle: true,
+          sphere: true
         });
         if (slashResult.defeated > 0) audio.playSfx("enemyDefeat", 0.8);
       }
@@ -1466,10 +1474,7 @@ export function startGame(uiElement, options = {}) {
         return;
       }
 
-      hud.update({
-        ...buildHudModel(),
-        portalPrompt: "Minigame mode: 360 sword, bombs, and moving platforms",
-      });
+      hud.update(buildHudModel());
       cameraController.updateCamera(dt);
       renderer.render(scene, camera);
       return;

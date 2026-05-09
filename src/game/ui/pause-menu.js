@@ -118,11 +118,6 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
     footer.style.gap = "10px";
     right.appendChild(footer);
 
-    const hint = document.createElement("div");
-    hint.className = "cj-subtitle";
-    hint.textContent = "This menu is meant to feel like an in-game pause screen, not a web page.";
-    footer.appendChild(hint);
-
     const closeButton = document.createElement("button");
     closeButton.textContent = "Close";
     styleButton(closeButton, { primary: true });

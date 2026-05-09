@@ -75,15 +75,6 @@ export function createCampaignInfoMenu({ getModel, onClose }) {
       if (model.bossName) summaryGrid.appendChild(makeCard("Boss", model.bossName));
     }
 
-    const note = document.createElement("div");
-    note.style.marginTop = "12px";
-    note.style.color = "rgba(255,255,255,0.72)";
-    note.style.fontSize = "0.9rem";
-    note.textContent = model.mode === "hub"
-      ? "Use this menu for the longer campaign and hub text so the HUD stays compact during play."
-      : "This menu keeps the longer story and status text separated from the in-game HUD.";
-    panel.appendChild(note);
-
     const buttonRow = document.createElement("div");
     buttonRow.style.display = "flex";
     buttonRow.style.justifyContent = "flex-end";

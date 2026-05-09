@@ -17,22 +17,32 @@ export function createRenderContext() {
   renderer.physicallyCorrectLights = true;
   document.body.appendChild(renderer.domElement);
 
-  const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x1d243a, 2.0);
+  // Hemisphere provides sky-to-ground gradient lighting
+  const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x0e1220, 1.0);
   scene.add(hemi);
 
-  const sun = new THREE.DirectionalLight(0xffffff, 2.4);
-  sun.position.set(25, 40, 20);
+  // Strong sun directional light for crisp shadows
+  const sun = new THREE.DirectionalLight(0xffffff, 3.0);
+  sun.position.set(35, 60, 26);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.camera.left = -150;
-  sun.shadow.camera.right = 150;
-  sun.shadow.camera.top = 150;
-  sun.shadow.camera.bottom = -150;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.bias = -0.0005;
+  sun.shadow.camera.left = -120;
+  sun.shadow.camera.right = 120;
+  sun.shadow.camera.top = 120;
+  sun.shadow.camera.bottom = -120;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 300;
   scene.add(sun);
 
-  const fill = new THREE.DirectionalLight(0x7ecfff, 0.65);
-  fill.position.set(-24, 18, -32);
+  // Subtle fill light to soften shadows
+  const fill = new THREE.DirectionalLight(0x9fdfff, 0.6);
+  fill.position.set(-28, 22, -30);
   scene.add(fill);
+
+  // Ambient for base illumination
+  const ambient = new THREE.AmbientLight(0x101218, 0.35);
+  scene.add(ambient);
 
   return {
     scene,

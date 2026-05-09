@@ -10,7 +10,7 @@ export function createTitleScreen({ onStart, onStartMinigame, onOpenControls }) 
   });
   document.body.appendChild(root);
 
-  // Animated background layer (subtle motion)
+  // Animated background layer (subtle motion + scrolling)
   const bgAnim = document.createElement("div");
   bgAnim.style.position = "absolute";
   bgAnim.style.inset = "0";
@@ -19,16 +19,21 @@ export function createTitleScreen({ onStart, onStartMinigame, onOpenControls }) 
   bgAnim.style.transition = "opacity 300ms ease";
   bgAnim.style.mixBlendMode = "overlay";
   bgAnim.style.opacity = "0.9";
+  // base scrolling layer + two radial parallax layers
+  bgAnim.style.background = "linear-gradient(90deg, rgba(18,26,44,0.18) 0%, rgba(8,12,20,0.18) 25%, rgba(12,18,30,0.18) 50%, rgba(8,12,20,0.18) 75%, rgba(18,26,44,0.18) 100%), radial-gradient(circle at 50% 50%, rgba(78,120,180,0.06), transparent 12%), radial-gradient(circle at 20% 30%, rgba(180,120,90,0.03), transparent 18%)";
+  bgAnim.style.backgroundSize = "240% 240%, cover, cover";
+  bgAnim.style.backgroundRepeat = "repeat-x, no-repeat, no-repeat";
   root.appendChild(bgAnim);
 
   let _animId = null;
   let _start = performance.now();
   function _tick(now) {
-    const t = (now - _start) * 0.00012; // slow motion
-    const x = Math.cos(t * 0.6) * 40 + 50;
-    const y = Math.sin(t * 0.4) * 30 + 50;
-    // moving radial gradients to give subtle parallax
-    bgAnim.style.background = `radial-gradient(circle at ${x}% ${y}%, rgba(78,120,180,0.08), transparent 12%), radial-gradient(circle at ${100 - x}% ${100 - y}%, rgba(180,120,90,0.04), transparent 18%)`;
+    const t = (now - _start) * 0.00014; // slow motion
+    const scrollX = (t * 30) % 100; // percentage scroll
+    const px = Math.cos(t * 0.9) * 40 + 50;
+    const py = Math.sin(t * 0.6) * 30 + 50;
+    // animate background position for scrolling effect and parallax radial seeds
+    bgAnim.style.backgroundPosition = `${-scrollX}% 0%, ${px}% ${py}%, ${100 - px}% ${100 - py}%`;
     _animId = requestAnimationFrame(_tick);
   }
   _animId = requestAnimationFrame(_tick);

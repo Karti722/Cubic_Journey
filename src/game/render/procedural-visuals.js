@@ -58,8 +58,8 @@ function createPlayerAvatar(textures) {
   head.position.y = 0.5;
   avatar.add(head);
 
-  // simple mouth to give a face at the front
-  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.01), new THREE.MeshBasicMaterial({ color: 0x40221a }));
+  // simple mouth to give a face at the front (lit material so shading shows)
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.01), new THREE.MeshStandardMaterial({ color: 0x40221a, roughness: 0.72, metalness: 0.01 }));
   mouth.position.set(0, 0.42, 0.215);
   avatar.add(mouth);
 
@@ -98,7 +98,7 @@ function createPlayerAvatar(textures) {
   const faceTex = new THREE.CanvasTexture(faceCanvas);
   faceTex.encoding = THREE.sRGBEncoding;
   faceTex.needsUpdate = true;
-  const faceMat = new THREE.MeshBasicMaterial({ map: faceTex, transparent: true, side: THREE.DoubleSide });
+  const faceMat = new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, side: THREE.DoubleSide, roughness: 0.72, metalness: 0.02, emissive: 0x000000 });
   const facePlane = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), faceMat);
   facePlane.position.set(0, 0.46, 0.26);
   avatar.add(facePlane);

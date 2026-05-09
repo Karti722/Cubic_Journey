@@ -114,15 +114,26 @@ export function buildWorldRuntime(scene, definition, visuals) {
   }
 
   for (const bombDef of definition.bombs || []) {
+    const bombRadius = bombDef.radius || 0.9;
     const shell = new THREE.Mesh(
-      new THREE.SphereGeometry(bombDef.radius || 0.9, 14, 12),
-      new THREE.MeshStandardMaterial({ color: 0x2b2b2b, map: textures.rock, roughness: 0.5, metalness: 0.35, emissive: 0x220000, emissiveIntensity: 0.35 })
+      new THREE.SphereGeometry(bombRadius, 24, 18),
+      new THREE.MeshStandardMaterial({
+        color: 0x111111,
+        map: textures.rock,
+        roughness: 0.88,
+        metalness: 0.08,
+        emissive: 0x120000,
+        emissiveIntensity: 0.28,
+        flatShading: false
+      })
     );
     shell.position.set(bombDef.x, bombDef.y, bombDef.z);
     root.add(shell);
 
+    addBombSpikes(shell, bombRadius, textures);
+
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry((bombDef.radius || 0.9) * 0.42, 10, 10),
+      new THREE.SphereGeometry(bombRadius * 0.42, 10, 10),
       new THREE.MeshBasicMaterial({ color: 0xff5533, transparent: true, opacity: 0.75, depthWrite: false })
     );
     core.position.copy(shell.position);
@@ -131,13 +142,21 @@ export function buildWorldRuntime(scene, definition, visuals) {
     bombs.push({
       shell,
       core,
-      radius: bombDef.radius || 0.9,
+      radius: bombRadius,
       blastRadius: bombDef.blastRadius || 2.6,
       cooldown: bombDef.cooldown || 3.5,
       cooldownUntil: 0,
       explodedUntil: 0,
       phase: bombDef.phase || Math.random() * Math.PI * 2,
-      exploded: false
+      exploded: false,
+      originX: bombDef.x,
+      originZ: bombDef.z,
+      baseSpeed: bombDef.baseSpeed ?? 1.1,
+      chaseWeight: bombDef.chaseWeight ?? 0.52,
+      avoidWeight: bombDef.avoidWeight ?? 0.2,
+      velX: 0,
+      velZ: 0,
+      wanderPhase: Math.random() * Math.PI * 2
     });
   }
 
@@ -291,6 +310,51 @@ export function buildWorldRuntime(scene, definition, visuals) {
         const fade = Math.max(0, (bomb.explodedUntil - elapsed) * 3.2);
         bomb.core.material.opacity = fade * 0.45;
       } else {
+        if (playerPosition) {
+          let desiredX = Math.sin(elapsed * 0.9 + bomb.wanderPhase) * 0.15;
+          let desiredZ = Math.cos(elapsed * 0.85 + bomb.wanderPhase) * 0.15;
+
+          const toPlayerX = playerPosition.x - bomb.shell.position.x;
+          const toPlayerZ = playerPosition.z - bomb.shell.position.z;
+          const distanceToPlayer = Math.hypot(toPlayerX, toPlayerZ);
+
+          if (distanceToPlayer > 0.001) {
+            const nx = toPlayerX / distanceToPlayer;
+            const nz = toPlayerZ / distanceToPlayer;
+            desiredX += nx * bomb.chaseWeight;
+            desiredZ += nz * bomb.chaseWeight;
+          }
+
+          for (const otherBomb of bombs) {
+            if (otherBomb === bomb || otherBomb.exploded) continue;
+            const dx = bomb.shell.position.x - otherBomb.shell.position.x;
+            const dz = bomb.shell.position.z - otherBomb.shell.position.z;
+            const distSq = dx * dx + dz * dz;
+            if (distSq <= 0.0001 || distSq > 8) continue;
+            desiredX += (dx / distSq) * bomb.avoidWeight;
+            desiredZ += (dz / distSq) * bomb.avoidWeight;
+          }
+
+          const edgePad = 2.8;
+          if (bomb.shell.position.x < arenaBounds.minX + edgePad) desiredX += 0.7;
+          if (bomb.shell.position.x > arenaBounds.maxX - edgePad) desiredX -= 0.7;
+          if (bomb.shell.position.z < arenaBounds.minZ + edgePad) desiredZ += 0.7;
+          if (bomb.shell.position.z > arenaBounds.maxZ - edgePad) desiredZ -= 0.7;
+
+          const desiredLen = Math.hypot(desiredX, desiredZ) || 1;
+          const targetSpeed = bomb.baseSpeed;
+          const targetVelX = (desiredX / desiredLen) * targetSpeed;
+          const targetVelZ = (desiredZ / desiredLen) * targetSpeed;
+          const blend = Math.min(1, dt * 2.8);
+
+          bomb.velX += (targetVelX - bomb.velX) * blend;
+          bomb.velZ += (targetVelZ - bomb.velZ) * blend;
+          bomb.shell.position.x += bomb.velX * dt;
+          bomb.shell.position.z += bomb.velZ * dt;
+          bomb.core.position.x = bomb.shell.position.x;
+          bomb.core.position.z = bomb.shell.position.z;
+        }
+
         bomb.core.material.opacity = 0.5 + pulse * 0.35;
         bomb.core.scale.setScalar(1 + pulse * 0.22);
         bomb.shell.rotation.y += dt * 1.8;
@@ -742,6 +806,44 @@ function addCloud(group, textures, x, y, z, scale = 3) {
   }
 
   group.add(cloud);
+}
+
+function addBombSpikes(shell, radius) {
+  const spikeMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.55,
+    metalness: 0.04,
+    emissive: 0xffffff,
+    emissiveIntensity: 0.08,
+    flatShading: true
+  });
+
+  const spikeGeometry = new THREE.ConeGeometry(radius * 0.14, radius * 1.05, 4, 1);
+  const directions = [
+    new THREE.Vector3(1, 0.15, 0),
+    new THREE.Vector3(-1, 0.12, 0),
+    new THREE.Vector3(0, 0.15, 1),
+    new THREE.Vector3(0, 0.12, -1),
+    new THREE.Vector3(0.8, 0.5, 0.18),
+    new THREE.Vector3(-0.8, 0.45, 0.12),
+    new THREE.Vector3(0.18, 0.55, 0.82),
+    new THREE.Vector3(-0.14, 0.5, -0.82),
+    new THREE.Vector3(0.62, 0.78, 0.02),
+    new THREE.Vector3(-0.56, 0.82, 0.08),
+    new THREE.Vector3(0.1, 0.84, 0.62),
+    new THREE.Vector3(-0.08, 0.8, -0.6),
+    new THREE.Vector3(0.2, -0.96, 0.08),
+    new THREE.Vector3(-0.16, -0.94, -0.1)
+  ];
+
+  for (const direction of directions) {
+    const normalized = direction.clone().normalize();
+    const spike = new THREE.Mesh(spikeGeometry, spikeMaterial.clone());
+    spike.position.copy(normalized.multiplyScalar(radius * 0.98));
+    spike.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normalized);
+    spike.scale.setScalar(1 + Math.random() * 0.1);
+    shell.add(spike);
+  }
 }
 
 function addRingRocks(group, textures, centerX, centerZ, radius, rockCount) {

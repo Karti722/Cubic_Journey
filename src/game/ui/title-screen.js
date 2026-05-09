@@ -1,6 +1,6 @@
 import { ensureUiTheme, styleButton, styleHeading, styleOverlayRoot, stylePanel, styleSubtext } from "./ui-theme.js";
 
-export function createTitleScreen({ onStart, onOpenControls }) {
+export function createTitleScreen({ onStart, onStartMinigame, onOpenControls }) {
   ensureUiTheme();
 
   const root = document.createElement("div");
@@ -43,10 +43,10 @@ export function createTitleScreen({ onStart, onOpenControls }) {
 
   const prompt = document.createElement("div");
   prompt.textContent = "Press the Play button to start";
-  prompt.style.fontWeight = "800";
-  prompt.style.letterSpacing = "0.03em";
-  prompt.style.textTransform = "uppercase";
-  prompt.style.fontSize = "0.82rem";
+  prompt.style.fontWeight = "600";
+  prompt.style.letterSpacing = "0.01em";
+  prompt.style.textTransform = "none";
+  prompt.style.fontSize = "0.92rem";
   launchBar.appendChild(prompt);
 
   const playButton = document.createElement("button");
@@ -71,12 +71,60 @@ export function createTitleScreen({ onStart, onOpenControls }) {
   playButton.addEventListener("click", begin);
   launchBar.appendChild(playButton);
 
+  const minigameButton = document.createElement("button");
+  minigameButton.textContent = "Slash Minigame";
+  styleButton(minigameButton, { primary: true });
+  minigameButton.style.padding = "0.95rem 1.35rem";
+  minigameButton.style.fontSize = "0.95rem";
+  minigameButton.style.letterSpacing = "0.05em";
+  minigameButton.style.textTransform = "uppercase";
+  minigameButton.style.background = "linear-gradient(135deg, #8a2b28, #dc6d30)";
+  minigameButton.style.boxShadow = "0 16px 30px rgba(0,0,0,0.28), 0 0 0 1px rgba(255, 178, 129, 0.2), 0 0 28px rgba(220, 109, 48, 0.32)";
+  minigameButton.addEventListener("pointerenter", () => {
+    minigameButton.style.transform = "translateY(-1px) scale(1.02)";
+    minigameButton.style.filter = "brightness(1.08) saturate(1.08)";
+  });
+  minigameButton.addEventListener("pointerleave", () => {
+    minigameButton.style.transform = "translateY(0) scale(1)";
+    minigameButton.style.filter = "none";
+  });
+  minigameButton.addEventListener("click", beginMinigame);
+  launchBar.appendChild(minigameButton);
+
+  const linksWrap = document.createElement("div");
+  linksWrap.style.display = "flex";
+  linksWrap.style.gap = "8px";
+  linksWrap.style.alignItems = "center";
+  launchBar.appendChild(linksWrap);
+
+  const sourceButton = document.createElement("button");
+  sourceButton.textContent = "Source Code";
+  styleButton(sourceButton, { primary: false });
+  sourceButton.style.padding = "0.55rem 0.9rem";
+  sourceButton.style.fontSize = "0.82rem";
+  sourceButton.style.background = "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))";
+  sourceButton.style.boxShadow = "0 8px 18px rgba(0,0,0,0.36)";
+  sourceButton.addEventListener("click", () => {
+    window.open("https://github.com/Karti722/Cubic_Journey", "_blank");
+  });
+  linksWrap.appendChild(sourceButton);
+
   function begin() {
     if (started) return;
     started = true;
     setTimeout(() => {
       destroy();
       if (typeof onStart === "function") onStart();
+    }, 120);
+  }
+
+  function beginMinigame() {
+    if (started) return;
+    started = true;
+    setTimeout(() => {
+      destroy();
+      if (typeof onStartMinigame === "function") onStartMinigame();
+      else if (typeof onStart === "function") onStart();
     }, 120);
   }
 

@@ -58,6 +58,11 @@ function createPlayerAvatar(textures) {
   head.position.y = 0.5;
   avatar.add(head);
 
+  // simple mouth to give a face at the front
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.01), new THREE.MeshBasicMaterial({ color: 0x40221a }));
+  mouth.position.set(0, 0.42, 0.215);
+  avatar.add(mouth);
+
   const hair = new THREE.Mesh(new THREE.SphereGeometry(0.235, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMaterial);
   hair.position.y = 0.58;
   hair.rotation.x = Math.PI;
@@ -98,6 +103,8 @@ function createPlayerAvatar(textures) {
   avatar.add(eyeRight);
 
   avatar.bodyMaterial = shirtMaterial;
+  avatar.leftArm = leftArm;
+  avatar.rightArm = rightArm;
   avatar.materials = { shirtMaterial, skinMaterial, pantsMaterial, hairMaterial, shoeMaterial, eyeMaterial };
 
   avatar.traverse(object => {

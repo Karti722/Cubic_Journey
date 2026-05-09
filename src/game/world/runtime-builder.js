@@ -2,6 +2,7 @@ import { THREE } from "../../engine/three.js";
 
 export function buildWorldRuntime(scene, definition, visuals) {
   const { textures } = visuals;
+  const arenaBounds = getDefinitionBounds(definition);
   scene.background = new THREE.Color(definition.skyColor);
   scene.fog = new THREE.Fog(definition.skyColor, 26, 180);
 
@@ -15,9 +16,11 @@ export function buildWorldRuntime(scene, definition, visuals) {
   root.add(scenery.group);
 
   const colliders = [];
+  const movingPlatforms = [];
   const collectibles = [];
   const jumpPads = [];
   const dashOrbs = [];
+  const bombs = [];
   const enemies = [];
   const portals = [];
 
@@ -45,14 +48,30 @@ export function buildWorldRuntime(scene, definition, visuals) {
     glow.position.set(platform.x, platform.y, platform.z);
     root.add(glow);
 
-    colliders.push({
+    const collider = {
       x: platform.x,
       y: platform.y,
       z: platform.z,
       sx: platform.sx,
       sy: platform.sy,
       sz: platform.sz
-    });
+    };
+    colliders.push(collider);
+
+    if (platform.move) {
+      movingPlatforms.push({
+        mesh,
+        glow,
+        collider,
+        originX: platform.x,
+        originY: platform.y,
+        originZ: platform.z,
+        axis: platform.move.axis || "x",
+        amplitude: platform.move.amplitude ?? 3,
+        speed: platform.move.speed ?? 0.8,
+        phase: platform.move.phase ?? Math.random() * Math.PI * 2
+      });
+    }
   }
 
   for (const item of definition.collectibles) {
@@ -85,20 +104,64 @@ export function buildWorldRuntime(scene, definition, visuals) {
     dashOrbs.push({ mesh, collected: false });
   }
 
+  for (const bombDef of definition.bombs || []) {
+    const shell = new THREE.Mesh(
+      new THREE.SphereGeometry(bombDef.radius || 0.9, 14, 12),
+      new THREE.MeshStandardMaterial({ color: 0x2b2b2b, map: textures.rock, roughness: 0.5, metalness: 0.35, emissive: 0x220000, emissiveIntensity: 0.35 })
+    );
+    shell.position.set(bombDef.x, bombDef.y, bombDef.z);
+    root.add(shell);
+
+    const core = new THREE.Mesh(
+      new THREE.SphereGeometry((bombDef.radius || 0.9) * 0.42, 10, 10),
+      new THREE.MeshBasicMaterial({ color: 0xff5533, transparent: true, opacity: 0.75, depthWrite: false })
+    );
+    core.position.copy(shell.position);
+    root.add(core);
+
+    bombs.push({
+      shell,
+      core,
+      radius: bombDef.radius || 0.9,
+      blastRadius: bombDef.blastRadius || 2.6,
+      cooldown: bombDef.cooldown || 3.5,
+      cooldownUntil: 0,
+      explodedUntil: 0,
+      phase: bombDef.phase || Math.random() * Math.PI * 2,
+      exploded: false
+    });
+  }
+
   for (const enemyDef of definition.enemies || []) {
     const mesh = visuals.createGoblinEnemy();
+    const baseRadius = enemyDef.radius || 0.6;
+    const scaleFactor = enemyDef.isGiant ? 2.2 : 1;
+    mesh.scale.setScalar(scaleFactor);
     mesh.position.set(enemyDef.x, enemyDef.y, enemyDef.z);
     root.add(mesh);
     enemies.push({
       mesh,
       defeated: false,
+      isGiant: Boolean(enemyDef.isGiant),
+      health: Math.max(1, Math.floor(enemyDef.health || 1)),
+      maxHealth: Math.max(1, Math.floor(enemyDef.health || 1)),
+      radius: baseRadius,
       phase: enemyDef.phase || Math.random() * Math.PI * 2,
       originX: enemyDef.x,
       originY: enemyDef.y,
       originZ: enemyDef.z,
-      driftX: enemyDef.driftX ?? (0.55 + Math.random() * 0.35),
-      driftZ: enemyDef.driftZ ?? (0.45 + Math.random() * 0.3),
-      driftY: enemyDef.driftY ?? (0.12 + Math.random() * 0.08)
+      driftX: enemyDef.driftX ?? (enemyDef.isGiant ? 0.16 : (0.55 + Math.random() * 0.35)),
+      driftZ: enemyDef.driftZ ?? (enemyDef.isGiant ? 0.13 : (0.45 + Math.random() * 0.3)),
+      driftY: enemyDef.driftY ?? (enemyDef.isGiant ? 0.04 : (0.12 + Math.random() * 0.08)),
+      baseSpeed: enemyDef.baseSpeed ?? (enemyDef.isGiant ? 1.9 : 2.4),
+      flyHeight: enemyDef.flyHeight ?? (enemyDef.isGiant ? 0.85 : 0.45),
+      chaseWeight: enemyDef.chaseWeight ?? (enemyDef.isGiant ? 0.62 : 0.78),
+      avoidWeight: enemyDef.avoidWeight ?? 0.45,
+      dashCooldownUntil: Math.random() * 1.6,
+      dashUntil: 0,
+      velX: 0,
+      velZ: 0,
+      wanderPhase: Math.random() * Math.PI * 2
     });
   }
 
@@ -155,7 +218,8 @@ export function buildWorldRuntime(scene, definition, visuals) {
     portals.push({ ...portal, ring, orb });
   }
 
-  function update(dt, elapsed) {
+  function update(dt, elapsed, context = {}) {
+    const playerPosition = context.playerPosition || null;
     atmosphere.group.rotation.y += dt * atmosphere.spinSpeed;
     atmosphere.group.rotation.x = Math.sin(elapsed * 0.05) * 0.03;
 
@@ -185,21 +249,125 @@ export function buildWorldRuntime(scene, definition, visuals) {
       dash.mesh.position.y += Math.sin(elapsed * 3.2 + dash.mesh.position.x) * 0.0025;
     }
 
+    for (const platform of movingPlatforms) {
+      const offset = Math.sin(elapsed * platform.speed + platform.phase) * platform.amplitude;
+      const x = platform.axis === "x" ? platform.originX + offset : platform.originX;
+      const y = platform.axis === "y" ? platform.originY + offset : platform.originY;
+      const z = platform.axis === "z" ? platform.originZ + offset : platform.originZ;
+
+      platform.mesh.position.set(x, y, z);
+      platform.glow.position.set(x, y, z);
+      platform.collider.x = x;
+      platform.collider.y = y;
+      platform.collider.z = z;
+    }
+
+    for (const bomb of bombs) {
+      const pulse = (Math.sin(elapsed * 7 + bomb.phase) + 1) / 2;
+      const canRespawn = bomb.exploded && elapsed >= bomb.cooldownUntil;
+      if (canRespawn) {
+        bomb.exploded = false;
+        bomb.shell.visible = true;
+        bomb.core.visible = true;
+      }
+
+      if (bomb.exploded) {
+        const fade = Math.max(0, (bomb.explodedUntil - elapsed) * 3.2);
+        bomb.core.material.opacity = fade * 0.45;
+      } else {
+        bomb.core.material.opacity = 0.5 + pulse * 0.35;
+        bomb.core.scale.setScalar(1 + pulse * 0.22);
+        bomb.shell.rotation.y += dt * 1.8;
+      }
+    }
+
     for (const enemy of enemies) {
       if (enemy.defeated) continue;
       const pulse = (Math.sin(elapsed * 5 + enemy.phase) + 1) / 2;
       if (enemy.mesh.bodyMaterial?.color) {
-        enemy.mesh.bodyMaterial.color.setRGB(0.28 + pulse * 0.26, 0.72 + pulse * 0.18, 0.2 + pulse * 0.12);
+        if (enemy.isGiant) {
+          enemy.mesh.bodyMaterial.color.setRGB(0.45 + pulse * 0.3, 0.35 + pulse * 0.15, 0.12 + pulse * 0.12);
+        } else {
+          enemy.mesh.bodyMaterial.color.setRGB(0.28 + pulse * 0.26, 0.72 + pulse * 0.18, 0.2 + pulse * 0.12);
+        }
       }
 
       if (enemy.mesh.bodyMaterial?.emissive) {
-        enemy.mesh.bodyMaterial.emissive.setRGB(0.04 + pulse * 0.1, 0.14 + pulse * 0.18, 0.04 + pulse * 0.08);
+        if (enemy.isGiant) {
+          enemy.mesh.bodyMaterial.emissive.setRGB(0.14 + pulse * 0.2, 0.04 + pulse * 0.1, 0.02 + pulse * 0.06);
+        } else {
+          enemy.mesh.bodyMaterial.emissive.setRGB(0.04 + pulse * 0.1, 0.14 + pulse * 0.18, 0.04 + pulse * 0.08);
+        }
       }
 
-      enemy.mesh.position.x = enemy.originX + Math.sin(elapsed * enemy.driftX + enemy.phase) * 0.9;
-      enemy.mesh.position.z = enemy.originZ + Math.cos(elapsed * enemy.driftZ + enemy.phase) * 0.7;
-      enemy.mesh.position.y = enemy.originY + Math.sin(elapsed * 2.8 + enemy.phase) * enemy.driftY;
-      enemy.mesh.rotation.y += dt * 2;
+      let desiredX = Math.sin(elapsed * (enemy.driftX * 1.3) + enemy.wanderPhase) * 0.4;
+      let desiredZ = Math.cos(elapsed * (enemy.driftZ * 1.2) + enemy.wanderPhase) * 0.35;
+
+      if (playerPosition) {
+        const toPlayerX = playerPosition.x - enemy.mesh.position.x;
+        const toPlayerZ = playerPosition.z - enemy.mesh.position.z;
+        const distanceToPlayer = Math.hypot(toPlayerX, toPlayerZ);
+
+        if (distanceToPlayer > 0.001) {
+          const nx = toPlayerX / distanceToPlayer;
+          const nz = toPlayerZ / distanceToPlayer;
+          desiredX += nx * enemy.chaseWeight;
+          desiredZ += nz * enemy.chaseWeight;
+
+          // Gentle strafe keeps combat readable while still feeling reactive.
+          if (distanceToPlayer < 6.5) {
+            const strafe = Math.sin(elapsed * 2.8 + enemy.phase) * 0.38;
+            desiredX += -nz * strafe;
+            desiredZ += nx * strafe;
+          }
+
+          if (distanceToPlayer < 10 && elapsed >= enemy.dashCooldownUntil) {
+            enemy.dashUntil = elapsed + (enemy.isGiant ? 0.34 : 0.24);
+            enemy.dashCooldownUntil = elapsed + (enemy.isGiant ? 2.6 : 2.1) + Math.random() * 1.15;
+          }
+
+          const abovePlayer = enemy.mesh.position.y > playerPosition.y + 1.2;
+          if (abovePlayer && distanceToPlayer < 8.5) {
+            enemy.mesh.position.y += (playerPosition.y + enemy.flyHeight * 0.5 - enemy.mesh.position.y) * Math.min(1, dt * 4.8);
+          }
+        }
+      }
+
+      for (const other of enemies) {
+        if (other === enemy || other.defeated) continue;
+        const dx = enemy.mesh.position.x - other.mesh.position.x;
+        const dz = enemy.mesh.position.z - other.mesh.position.z;
+        const distSq = dx * dx + dz * dz;
+        if (distSq <= 0.0001 || distSq > 5.2) continue;
+        desiredX += (dx / distSq) * enemy.avoidWeight;
+        desiredZ += (dz / distSq) * enemy.avoidWeight;
+      }
+
+      const edgePad = 2.4;
+      if (enemy.mesh.position.x < arenaBounds.minX + edgePad) desiredX += 0.95;
+      if (enemy.mesh.position.x > arenaBounds.maxX - edgePad) desiredX -= 0.95;
+      if (enemy.mesh.position.z < arenaBounds.minZ + edgePad) desiredZ += 0.95;
+      if (enemy.mesh.position.z > arenaBounds.maxZ - edgePad) desiredZ -= 0.95;
+
+      const desiredLen = Math.hypot(desiredX, desiredZ) || 1;
+      const isDashing = elapsed < enemy.dashUntil;
+      const targetSpeed = enemy.baseSpeed * (isDashing ? 1.85 : 1);
+      const targetVelX = (desiredX / desiredLen) * targetSpeed;
+      const targetVelZ = (desiredZ / desiredLen) * targetSpeed;
+      const accel = isDashing ? 8.5 : 6.2;
+      const blend = Math.min(1, dt * accel);
+
+      enemy.velX += (targetVelX - enemy.velX) * blend;
+      enemy.velZ += (targetVelZ - enemy.velZ) * blend;
+
+      enemy.mesh.position.x += enemy.velX * dt;
+      enemy.mesh.position.z += enemy.velZ * dt;
+
+      const hoverBase = enemy.originY + enemy.flyHeight;
+      const hoverWave = Math.sin(elapsed * (3.8 + enemy.driftY * 9) + enemy.phase) * (enemy.driftY + 0.09);
+      enemy.mesh.position.y += (hoverBase + hoverWave - enemy.mesh.position.y) * Math.min(1, dt * 6);
+
+      enemy.mesh.rotation.y = Math.atan2(enemy.velX, enemy.velZ);
     }
 
     for (const portal of portals) {
@@ -231,6 +399,7 @@ export function buildWorldRuntime(scene, definition, visuals) {
     collectibles,
     jumpPads,
     dashOrbs,
+    bombs,
     enemies,
     portals,
     goal,

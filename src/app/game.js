@@ -4,7 +4,7 @@ import { createCameraController } from "../engine/camera/camera-controller.js";
 import { createInput } from "../engine/input/input.js";
 import { GAME_CONFIG, PLAYER_CONFIG, getWorldStageCount } from "../game/config/game-config.js";
 import { createCampaignState, createDefaultCampaignSave } from "../game/campaign/campaign-state.js";
-import { createHubDefinition, createStageDefinition } from "../game/world/level-generator.js?v=3";
+import { createHubDefinition, createStageDefinition, createSwordMinigameDefinition, MINIGAME_MAX_LEVEL } from "../game/world/level-generator.js?v=5";
 import { buildWorldRuntime } from "../game/world/runtime-builder.js";
 import { updateHorizontalVelocity } from "../game/systems/movement-system.js";
 import { createAbilityState, resetAbilityState, stepPlayerPhysics } from "../game/systems/physics-system.js";
@@ -14,7 +14,9 @@ import {
   collectNearby,
   isGoalReached,
   findNearbyPortal,
-  resolveEnemyContacts
+  resolveEnemyContacts,
+  resolveSwordSlash,
+  resolveBombContacts
 } from "../game/systems/interaction-system.js";
 import { createHud } from "../game/ui/hud.js";
 import { createCampaignInfoMenu } from "../game/ui/campaign-info-menu.js";
@@ -32,13 +34,16 @@ import { createActionEffects } from "../game/effects/action-effects.js";
 import { SKILL_DEFINITIONS } from "../game/skills/skill-data.js";
 import { createProceduralVisuals } from "../game/render/procedural-visuals.js";
 
-export function startGame(uiElement) {
+export function startGame(uiElement, options = {}) {
   const { scene, camera, renderer, clock } = createRenderContext();
   attachResize(camera, renderer);
   const gameStartTimeMs = performance.now();
 
   const visuals = createProceduralVisuals();
   const player = visuals.createPlayerAvatar();
+  player.spinActive = false;
+  player.spinRemaining = 0;
+  player.spinSpeed = Math.PI * 4.0; // radians per second when spinning
   player.position.set(0, 3, 0);
   scene.add(player);
 
@@ -88,6 +93,29 @@ export function startGame(uiElement) {
   let endCreditsActive = false;
   let fps = 0;
   let fpsSmoothing = 0.92;
+  const startMode = options.startMode || "campaign";
+
+  const minigameState = {
+    active: false,
+    won: false,
+    level: 1,
+    maxLevel: MINIGAME_MAX_LEVEL,
+    slashLatch: false,
+    confirmLatch: false,
+    slashCooldownUntil: 0,
+    slashAnimUntil: 0,
+    totalEnemies: 0,
+    defeatedEnemies: 0,
+    giantMaxHealth: 0,
+    giantHealth: 0,
+    // Charge explosion state
+    chargeHeldSince: null,
+    chargeCooldownUntil: 0,
+    chargeLastVisual: 0,
+    // Whether we've already handled advancing after a win
+    winHandled: false
+  };
+
 
   let campaignInfoReturnToPause = false;
 
@@ -101,6 +129,83 @@ export function startGame(uiElement) {
   const ability = createAbilityState(PLAYER_CONFIG.extraAirJumps);
   let debugToggleLatch = false;
   let skipKeyLatch = false;
+  let lastMoveSignZ = 0;
+
+  function isSwordSlashPressed() {
+    const pressed = keys.KeyF || keys.Numpad0;
+    if (pressed) {
+      if (minigameState.slashLatch) return false;
+      minigameState.slashLatch = true;
+      return true;
+    }
+
+    minigameState.slashLatch = false;
+    return false;
+  }
+
+  function isMinigameConfirmPressed() {
+    const pressed = keys.Enter || keys.NumpadEnter;
+    if (pressed) {
+      if (minigameState.confirmLatch) return false;
+      minigameState.confirmLatch = true;
+      return true;
+    }
+
+    minigameState.confirmLatch = false;
+    return false;
+  }
+
+  function refreshMinigameStatus() {
+    if (!runtime || !minigameState.active) return;
+    let defeated = 0;
+    let total = 0;
+    let giantMax = 0;
+    let giantHealth = 0;
+
+    for (const enemy of runtime.enemies || []) {
+      total += 1;
+      if (enemy.defeated) defeated += 1;
+      if (enemy.isGiant) {
+        giantMax = enemy.maxHealth || 1;
+        giantHealth = enemy.defeated ? 0 : (enemy.health || 0);
+      }
+    }
+
+    minigameState.totalEnemies = total;
+    minigameState.defeatedEnemies = defeated;
+    minigameState.giantMaxHealth = giantMax;
+    minigameState.giantHealth = giantHealth;
+    minigameState.won = total > 0 && defeated >= total;
+    if (minigameState.won && !minigameState.winHandled) {
+      minigameState.winHandled = true;
+      setTimeout(() => {
+        if (!minigameState.active) return;
+        if (minigameState.level >= minigameState.maxLevel) {
+          // show an ending screen and return to title
+          showMinigameEnding();
+          return;
+        }
+        enterMinigameLevel(minigameState.level + 1);
+      }, 600);
+    }
+  }
+
+  function enterMinigame() {
+    enterMinigameLevel(1);
+  }
+
+  function enterMinigameLevel(level) {
+    const clampedLevel = Math.max(1, Math.min(MINIGAME_MAX_LEVEL, Math.floor(level)));
+    minigameState.active = true;
+    minigameState.won = false;
+    minigameState.level = clampedLevel;
+    minigameState.slashCooldownUntil = 0;
+    minigameState.slashAnimUntil = 0;
+    minigameState.winHandled = false;
+    minigameState.chargeHeldSince = null;
+    minigameState.chargeCooldownUntil = 0;
+    loadDefinition(createSwordMinigameDefinition(clampedLevel), `Loading goblin wildlands L${clampedLevel}...`);
+  }
 
   function loadDefinition(definition, loadingMessage = "Building the world...") {
     const loadToken = ++worldLoadToken;
@@ -117,11 +222,17 @@ export function startGame(uiElement) {
 
       if (runtime) runtime.dispose();
       runtime = buildWorldRuntime(scene, definition, visuals);
+      minigameState.active = definition.type === "minigame";
+      if (minigameState.active) {
+        minigameState.level = Math.max(1, definition.minigameLevel || minigameState.level || 1);
+        minigameState.maxLevel = Math.max(1, definition.minigameMaxLevel || MINIGAME_MAX_LEVEL);
+      }
       player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
       velocity.set(0, 0, 0);
       resetAbilityState(ability, PLAYER_CONFIG.extraAirJumps);
       grounded = false;
       collectedCoins = 0;
+      refreshMinigameStatus();
 
       setMusicForCurrentState();
       hud.update(buildHudModel());
@@ -170,6 +281,39 @@ export function startGame(uiElement) {
     }, 7000);
   }
 
+  function showMinigameEnding() {
+    if (endCreditsActive) return;
+    endCreditsActive = true;
+    paused = true;
+    audio.pauseMusic();
+    audio.playSfx("credits", 0.95);
+    loadingScreen.hide();
+
+    const endRoot = document.createElement("div");
+    endRoot.style.position = "fixed";
+    endRoot.style.inset = "0";
+    endRoot.style.zIndex = "120";
+    endRoot.style.display = "grid";
+    endRoot.style.placeItems = "center";
+    endRoot.style.background = "radial-gradient(circle at 50% 40%, rgba(6, 10, 20, 0.84), rgba(0, 0, 0, 0.98))";
+    endRoot.style.color = "white";
+    endRoot.style.pointerEvents = "auto";
+
+    endRoot.innerHTML = `
+      <div style="width:min(720px, calc(100vw - 32px)); padding: 28px 24px; text-align:center; background: rgba(10, 16, 28, 0.94); border: 1px solid rgba(126, 231, 255, 0.22); border-radius: 18px; box-shadow: 0 28px 70px rgba(0,0,0,0.55);">
+        <div style="font-size: 1rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-bottom: 10px;">Minigame Complete</div>
+        <div style="font-size: clamp(1.4rem, 4vw, 2.2rem); font-weight: 800; letter-spacing: 0.04em; margin-bottom: 10px;">Sword Trial Complete</div>
+        <div style="font-size: 1rem; line-height: 1.55; color: rgba(255,255,255,0.84); margin-bottom: 22px;">You cleared the Goblin Wildlands minigame. Returning to title screen...</div>
+      </div>
+    `;
+    document.body.appendChild(endRoot);
+
+    setTimeout(() => {
+      // return to title screen
+      location.reload();
+    }, 4200);
+  }
+
   function triggerDamageFeedback(elapsed) {
     damageCooldownUntil = elapsed + 0.85;
     audio.playSfx("damage", 0.82);
@@ -179,7 +323,9 @@ export function startGame(uiElement) {
   }
 
   function setMusicForCurrentState() {
-    const trackName = campaign.state.mode === "hub"
+    const trackName = minigameState.active
+      ? "boss"
+      : campaign.state.mode === "hub"
       ? "hub"
       : runtime?.isBossStage
         ? "boss"
@@ -350,6 +496,12 @@ export function startGame(uiElement) {
       travelToWorld(worldIndex, stageIndex);
       if (musicEnabled) audio.resumeMusic();
     },
+    onReturnTitle: () => {
+      audio.playSfx("pause", 0.55);
+      paused = false;
+      pauseMenu.close();
+      location.reload();
+    },
     onResetSave: () => {
       clearSave();
       location.reload();
@@ -416,6 +568,30 @@ export function startGame(uiElement) {
   }
 
   function buildHudModel() {
+    if (minigameState.active) {
+      return {
+        mode: "level",
+        fps,
+        worldName: `Slash Minigame — Goblin Wildlands L${minigameState.level}`,
+        stageNumber: minigameState.level,
+        stageCount: minigameState.maxLevel,
+        completedStages: minigameState.defeatedEnemies,
+        totalStages: minigameState.totalEnemies,
+        collectedCoins: minigameState.defeatedEnemies,
+        keyCubes: campaign.state.keyCubes,
+        currency: campaign.state.currency,
+        skillCount: countOwnedSkills(campaign.state.skills),
+        skipPrompt: minigameState.won
+          ? (minigameState.level >= minigameState.maxLevel
+            ? "All levels clear! Press Enter to return to title"
+            : `Level clear! Press Enter for Level ${Math.min(minigameState.maxLevel, minigameState.level + 1)}`)
+          : `Press F for 360 slash (Giant HP: ${minigameState.giantHealth}/${Math.max(1, minigameState.giantMaxHealth)})`,
+        storyLine: "Open-world sword trial with moving platforms, bomb hazards, and diving goblins.",
+        isBossStage: minigameState.giantHealth > 0,
+        bossName: minigameState.giantHealth > 0 ? "Giant Goblin" : ""
+      };
+    }
+
     if (campaign.state.mode === "hub") {
       return {
         mode: "hub",
@@ -462,6 +638,24 @@ export function startGame(uiElement) {
   }
 
   function buildCampaignInfoModel() {
+    if (minigameState.active) {
+      return {
+        mode: "level",
+        fps,
+        worldName: `Slash Minigame — Goblin Wildlands L${minigameState.level}`,
+        stageNumber: minigameState.level,
+        stageCount: minigameState.maxLevel,
+        storyLine: "Sword-only side minigame. Slash swarms of goblins and finish the giant boss.",
+        completedStages: minigameState.defeatedEnemies,
+        totalStages: minigameState.totalEnemies,
+        keyCubes: campaign.state.keyCubes,
+        currency: campaign.state.currency,
+        skillCount: countOwnedSkills(campaign.state.skills),
+        isBossStage: minigameState.giantHealth > 0,
+        bossName: minigameState.giantHealth > 0 ? "Giant Goblin" : ""
+      };
+    }
+
     if (campaign.state.mode === "hub") {
       return {
         mode: "hub",
@@ -760,7 +954,9 @@ export function startGame(uiElement) {
   addEventListener("touchstart", unlockAudio, { passive: true });
   addEventListener("keydown", unlockAudio);
 
-  if (isCampaignCompleteFromSave()) {
+  if (startMode === "minigame") {
+    enterMinigame();
+  } else if (isCampaignCompleteFromSave()) {
     campaign.state.finalWin = true;
     playEndCredits();
   } else {
@@ -791,6 +987,7 @@ export function startGame(uiElement) {
     fps = fps > 0 ? fps * fpsSmoothing + frameFps * (1 - fpsSmoothing) : frameFps;
 
     if (isWorldLoading) {
+      hud.update(buildHudModel());
       renderer.render(scene, camera);
       return;
     }
@@ -798,6 +995,7 @@ export function startGame(uiElement) {
     if (!runtime) return;
 
     if (controlsMenu.isOpen() || shopMenu.isOpen() || debugMenu.isOpen()) {
+      hud.update(buildHudModel());
       renderer.render(scene, camera);
       return;
     }
@@ -832,14 +1030,19 @@ export function startGame(uiElement) {
     }
 
     if (controls.isActionPressed("worldMenu")) {
-      if (!paused) worldMenu.toggle();
+      if (!paused && !minigameState.active) worldMenu.toggle();
     }
 
     if (controls.isActionPressed("hub")) {
+      if (minigameState.active) {
+        location.reload();
+        return;
+      }
       travelToHub();
     }
 
     if (paused) {
+      hud.update(buildHudModel());
       renderer.render(scene, camera);
       return;
     }
@@ -883,6 +1086,91 @@ export function startGame(uiElement) {
       effects.emit("dash", player.position, getDashDirectionVector(), 0.8, 14);
     }
 
+    if (minigameState.active) {
+      // Charge explosion: press and hold F (or Numpad0). Release after 1s to detonate.
+      const swordKeyDown = keys.KeyF || keys.Numpad0;
+      if (swordKeyDown) {
+        if (minigameState.chargeHeldSince == null) minigameState.chargeHeldSince = elapsed;
+        const held = elapsed - (minigameState.chargeHeldSince || 0);
+        const ratio = Math.min(1, held / 1.0);
+        // visual indicator while charging (throttled)
+        if (elapsed - (minigameState.chargeLastVisual || 0) >= 0.12) {
+          effects.emitSlash(player.position, { x: 0, z: 1 }, {
+            color: ratio >= 1 ? 0xffe8cc : 0xffd1b0,
+            scale: 1.6 + ratio * 3.2,
+            life: 0.24,
+            fullCircle: true,
+            opacity: 0.72
+          });
+          minigameState.chargeLastVisual = elapsed;
+        }
+      } else {
+        // released: if we were charging long enough, detonate
+        if (minigameState.chargeHeldSince != null) {
+          const held = elapsed - minigameState.chargeHeldSince;
+          if (held >= 1.0 && elapsed >= (minigameState.chargeCooldownUntil || 0) && !minigameState.won) {
+            audio.playSfx("explosion", 0.95);
+            // bigger visible explosion
+            effects.emitExplosion(player.position, { scale: 11.2, life: 1.0, color: 0xffe8cc });
+            const baseBlast = 5.0;
+            const blastRadius = baseBlast * 3.0; // 3x larger sphere
+            if (cameraController && typeof cameraController.shake === "function") {
+              cameraController.shake(1.4, 0.6);
+            }
+            let obliterated = 0;
+            for (const enemy of runtime.enemies || []) {
+              if (enemy.defeated) continue;
+              const dx = enemy.mesh.position.x - player.position.x;
+              const dz = enemy.mesh.position.z - player.position.z;
+              const dist = Math.hypot(dx, dz);
+              if (dist <= blastRadius) {
+                enemy.defeated = true;
+                enemy.health = 0;
+                if (enemy.mesh) enemy.mesh.visible = false;
+                obliterated++;
+              }
+            }
+            if (obliterated > 0) audio.playSfx("enemyDefeat", 0.9);
+            effects.emit("dash", player.position, { x: 0, y: 0.8, z: 0 }, 1.2, 18);
+            minigameState.chargeCooldownUntil = elapsed + 8.0;
+            refreshMinigameStatus();
+          }
+        }
+        minigameState.chargeHeldSince = null;
+      }
+
+      const swordSlashPressed = isSwordSlashPressed();
+      if (swordSlashPressed && elapsed >= minigameState.slashCooldownUntil && !minigameState.won) {
+        const direction = getDashDirection();
+        const slashResult = resolveSwordSlash(player, runtime.enemies, {
+          radius: 3.95,
+          damage: 1,
+          forwardX: direction.x,
+          forwardZ: direction.z,
+          forwardDotThreshold: -0.15,
+          fullCircle: true
+        });
+
+        minigameState.slashCooldownUntil = elapsed + 0.22;
+        minigameState.slashAnimUntil = elapsed + 0.19;
+        audio.playSfx("enemy", slashResult.hits > 0 ? 0.72 : 0.48);
+        effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
+        effects.emitSlash(player.position, direction, {
+          color: slashResult.hits > 0 ? 0xe6ffe4 : 0xbce9ff,
+          scale: slashResult.hits > 0 ? 2.35 : 2.15,
+          life: 0.18,
+          fullCircle: true
+        });
+
+        if (slashResult.defeated > 0) {
+          audio.playSfx("enemyDefeat", 0.84);
+          effects.emit("dash", player.position, { x: direction.x * 0.6, y: 0.5, z: direction.z * 0.6 }, 0.7, 10);
+        }
+
+        refreshMinigameStatus();
+      }
+    }
+
     const launched = applyJumpPads(
       player,
       velocity,
@@ -915,6 +1203,7 @@ export function startGame(uiElement) {
       audio.playSfx("enemyDefeat", 0.78);
       grounded = false;
       effects.emit("hit", player.position, { x: 0, y: 1.3, z: 0 }, 0.5, 8);
+      if (minigameState.active) refreshMinigameStatus();
     }
 
     if (enemyContact.playerHit && elapsed >= damageCooldownUntil) {
@@ -924,6 +1213,19 @@ export function startGame(uiElement) {
       velocity.set(0, 0, 0);
       resetAbilityState(ability, PLAYER_CONFIG.extraAirJumps);
       grounded = false;
+    }
+
+    if (minigameState.active) {
+      const bombResult = resolveBombContacts(player, runtime.bombs, elapsed, { touchPadding: 0.6 });
+      if (bombResult.exploded > 0 && elapsed >= damageCooldownUntil) {
+        audio.playSfx("explosion", 0.9);
+        effects.emit("hit", player.position, { x: 0, y: 1.1, z: 0 }, 0.9, 18);
+        triggerDamageFeedback(elapsed);
+        player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
+        velocity.set(0, 0, 0);
+        resetAbilityState(ability, PLAYER_CONFIG.extraAirJumps);
+        grounded = false;
+      }
     }
 
     if (elapsed >= damageCooldownUntil) {
@@ -957,8 +1259,32 @@ export function startGame(uiElement) {
     turnEffectCooldown = Math.max(0, turnEffectCooldown - dt);
     moveEffectCooldown = Math.max(0, moveEffectCooldown - dt);
     const previousRotationY = player.rotation.y;
-    if (Math.hypot(velocity.x, velocity.z) > 0.01) {
-      player.rotation.y = Math.atan2(velocity.x, velocity.z);
+    const speed = Math.hypot(velocity.x, velocity.z);
+    if (speed > 0.01) {
+      const baseYaw = Math.atan2(velocity.x, velocity.z);
+      const moveSignZ = Math.sign(velocity.z || 0);
+
+      // trigger a single 360 spin when flipping forward/back direction
+      if (moveSignZ !== lastMoveSignZ && Math.abs(velocity.z) > 0.8 && !player.spinActive) {
+        player.spinActive = true;
+        player.spinRemaining = Math.PI * 2;
+        player.spinBaseYaw = baseYaw;
+      }
+
+      if (player.spinActive) {
+        const rotateDelta = player.spinSpeed * dt;
+        player.spinRemaining -= rotateDelta;
+        const spun = Math.PI * 2 - Math.max(0, player.spinRemaining);
+        player.rotation.y = (player.spinBaseYaw || baseYaw) + spun;
+        if (player.spinRemaining <= 0) {
+          player.spinActive = false;
+          player.spinRemaining = 0;
+          lastMoveSignZ = moveSignZ;
+        }
+      } else {
+        player.rotation.y = baseYaw;
+        lastMoveSignZ = moveSignZ;
+      }
     }
 
     const rotationDelta = Math.abs(normalizeAngle(player.rotation.y - previousRotationY));
@@ -970,8 +1296,39 @@ export function startGame(uiElement) {
     lastRotationY = player.rotation.y;
     lastGrounded = grounded;
 
-    runtime.update(dt, elapsed);
+    if (minigameState.active && player.rightArm) {
+      const baseArmRotation = -0.42;
+      if (elapsed < minigameState.slashAnimUntil) {
+        const swingProgress = 1 - (minigameState.slashAnimUntil - elapsed) / 0.19;
+        const swingWave = Math.sin(Math.min(1, Math.max(0, swingProgress)) * Math.PI);
+        player.rightArm.rotation.z = baseArmRotation - swingWave * 1.55;
+      } else {
+        player.rightArm.rotation.z += (baseArmRotation - player.rightArm.rotation.z) * Math.min(1, dt * 10);
+      }
+    }
+
+    runtime.update(dt, elapsed, { playerPosition: player.position });
     effects.update(dt, elapsed);
+
+    if (minigameState.active) {
+      refreshMinigameStatus();
+      if (minigameState.won && isMinigameConfirmPressed()) {
+        if (minigameState.level >= minigameState.maxLevel) {
+          location.reload();
+          return;
+        }
+        enterMinigameLevel(minigameState.level + 1);
+        return;
+      }
+
+      hud.update({
+        ...buildHudModel(),
+        portalPrompt: "Minigame mode: 360 sword, bombs, and moving platforms",
+      });
+      cameraController.updateCamera(dt);
+      renderer.render(scene, camera);
+      return;
+    }
 
     if (campaign.state.mode === "hub") {
       const nearbyPortal = findNearbyPortal(player, runtime.portals, GAME_CONFIG.portalRadius);
@@ -1093,7 +1450,7 @@ export function startGame(uiElement) {
       });
     }
 
-    cameraController.updateCamera();
+    cameraController.updateCamera(dt);
     renderer.render(scene, camera);
   }
 

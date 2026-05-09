@@ -50,6 +50,7 @@ export function createHubDefinition(campaignState) {
     collectibles: [],
     jumpPads: [],
     dashOrbs: [],
+    bombs: [],
     goal: null,
     isBossStage: false,
     stageType: "hub"
@@ -72,7 +73,7 @@ export function createStageDefinition(worldIndex, stageIndex) {
   const templateId = (worldIndex * 17 + stageIndex * 13) % 12;
   const segmentCount = 18;
   const worldDifficulty = getWorldDifficulty(worldIndex, stageIndex, worldStageCount);
-  const maxStandardEnemies = 1 + Math.floor(worldDifficulty * 3.5);
+  const maxStandardEnemies = 4 + Math.floor(worldDifficulty * 8);
 
   const platforms = [{ x: 0, y: 0, z: 0, sx: 10, sy: 1, sz: 10, color: world.baseColor }];
   const collectibles = [];
@@ -153,6 +154,7 @@ export function createStageDefinition(worldIndex, stageIndex) {
     collectibles,
     jumpPads,
     dashOrbs,
+    bombs: [],
     enemies,
     goal,
     isBossStage: false,
@@ -201,7 +203,7 @@ function createBossStage(world, worldIndex, stageIndex, worldStageCount) {
     { x: 0, y: 10.9, z: 0 }
   ];
 
-  const bossEnemyCount = 3 + Math.floor(worldDifficulty * 3);
+  const bossEnemyCount = Math.min(enemyAnchors.length, 5 + Math.floor(worldDifficulty * 4));
   const enemies = enemyAnchors.slice(0, bossEnemyCount).map((anchor, index) => ({
     x: anchor.x,
     y: anchor.y,
@@ -222,12 +224,184 @@ function createBossStage(world, worldIndex, stageIndex, worldStageCount) {
     collectibles,
     jumpPads,
     dashOrbs,
+    bombs: [],
     enemies,
     goal,
     isBossStage: true,
     stageType: "boss",
     stageIndex
   };
+}
+
+export const MINIGAME_MAX_LEVEL = 10;
+
+export function createSwordMinigameDefinition(level = 1) {
+  const clampedLevel = Math.max(1, Math.min(MINIGAME_MAX_LEVEL, Math.floor(level)));
+  const rng = createRng(88031 + clampedLevel * 177);
+
+  const layout = buildMinigameLayout(clampedLevel);
+  const enemies = buildMinigameEnemies(clampedLevel, rng);
+  const bombs = buildMinigameBombs(clampedLevel, rng);
+
+  return {
+    type: "minigame",
+    name: `Goblin Wildlands L${clampedLevel}`,
+    skyColor: 0x7eb4df,
+    spawn: layout.spawn,
+    platforms: layout.platforms,
+    portals: [],
+    collectibles: [],
+    jumpPads: [],
+    dashOrbs: [],
+    bombs,
+    enemies,
+    goal: null,
+    isBossStage: clampedLevel % 5 === 0,
+    stageType: "minigame",
+    minigameLevel: clampedLevel,
+    minigameMaxLevel: MINIGAME_MAX_LEVEL
+  };
+}
+
+function buildMinigameLayout(level) {
+  const variant = (level - 1) % 5;
+  const platforms = [
+    { x: 0, y: 0, z: 0, sx: 96, sy: 1.6, sz: 96, color: 0x4e5968 },
+    { x: 0, y: -2.3, z: 0, sx: 116, sy: 2.2, sz: 116, color: 0x2f3a48 }
+  ];
+
+  let spawn = { x: 0, y: 3, z: -34 };
+  if (variant === 0) {
+    platforms.push(
+      { x: -24, y: 2.8, z: -12, sx: 18, sy: 1.2, sz: 14, color: 0x3a4453 },
+      { x: 18, y: 3.6, z: -6, sx: 14, sy: 1.2, sz: 20, color: 0x3a4453 },
+      { x: -6, y: 4.8, z: 20, sx: 20, sy: 1.2, sz: 14, color: 0x465366, move: { axis: "x", amplitude: 7, speed: 0.75, phase: 0.4 } }
+    );
+  } else if (variant === 1) {
+    spawn = { x: -30, y: 4, z: -30 };
+    platforms.push(
+      { x: -30, y: 3.2, z: -30, sx: 14, sy: 1.2, sz: 14, color: 0x3a4453 },
+      { x: -10, y: 4.2, z: -8, sx: 12, sy: 1.1, sz: 12, color: 0x3a4453, move: { axis: "z", amplitude: 8, speed: 0.95, phase: 0.9 } },
+      { x: 12, y: 5.2, z: 14, sx: 12, sy: 1.1, sz: 12, color: 0x3a4453, move: { axis: "x", amplitude: 9, speed: 0.82, phase: 1.5 } },
+      { x: 30, y: 6.4, z: 30, sx: 14, sy: 1.2, sz: 14, color: 0x465366 }
+    );
+  } else if (variant === 2) {
+    platforms.push(
+      { x: -20, y: 2.8, z: 0, sx: 18, sy: 1.2, sz: 10, color: 0x3a4453 },
+      { x: 0, y: 4.2, z: 0, sx: 18, sy: 1.2, sz: 10, color: 0x3a4453, move: { axis: "y", amplitude: 1.1, speed: 1.1, phase: 0.2 } },
+      { x: 20, y: 5.4, z: 0, sx: 18, sy: 1.2, sz: 10, color: 0x465366 },
+      { x: 0, y: 3.6, z: 24, sx: 22, sy: 1.2, sz: 12, color: 0x3a4453 }
+    );
+  } else if (variant === 3) {
+    const ringCount = 9;
+    for (let i = 0; i < ringCount; i += 1) {
+      const angle = (i / ringCount) * Math.PI * 2;
+      platforms.push({
+        x: Math.cos(angle) * 25,
+        y: 3 + (i % 3) * 0.8,
+        z: Math.sin(angle) * 25,
+        sx: 10,
+        sy: 1.2,
+        sz: 8,
+        color: i % 2 === 0 ? 0x3a4453 : 0x465366,
+        move: i % 3 === 0 ? { axis: "x", amplitude: 4, speed: 0.8, phase: i * 0.3 } : undefined
+      });
+    }
+  } else {
+    spawn = { x: 0, y: 6, z: -8 };
+    platforms.push(
+      { x: 0, y: 6, z: -8, sx: 16, sy: 1.2, sz: 16, color: 0x465366 },
+      { x: -20, y: 8.2, z: 0, sx: 16, sy: 1.2, sz: 16, color: 0x3a4453, move: { axis: "z", amplitude: 7, speed: 1.05, phase: 0.7 } },
+      { x: 20, y: 9.6, z: 0, sx: 16, sy: 1.2, sz: 16, color: 0x3a4453, move: { axis: "x", amplitude: 7, speed: 1.0, phase: 1.1 } },
+      { x: 0, y: 11.4, z: 16, sx: 14, sy: 1.2, sz: 14, color: 0x5a6578 }
+    );
+  }
+
+  return { platforms, spawn };
+}
+
+function buildMinigameEnemies(level, rng) {
+  const enemies = [];
+  const ringCount = 2 + Math.floor(level / 3);
+  const baseCount = 8 + level * 2;
+
+  for (let ring = 0; ring < ringCount; ring += 1) {
+    const count = baseCount + ring * 2;
+    const radius = 10 + ring * 8 + level * 0.6;
+    for (let i = 0; i < count; i += 1) {
+      const angle = (i / count) * Math.PI * 2 + ring * 0.35;
+      enemies.push({
+        x: Math.cos(angle) * radius,
+        y: 1.2 + ring * 0.45,
+        z: Math.sin(angle) * radius,
+        radius: 0.72,
+        health: 1,
+        isGiant: false,
+        phase: i * 0.21 + ring * 0.6,
+        driftX: 0.2 + rng() * 0.06,
+        driftZ: 0.2 + rng() * 0.06,
+        driftY: 0.05 + rng() * 0.03,
+        baseSpeed: 2.25 + level * 0.1,
+        flyHeight: 0.55 + level * 0.04
+      });
+    }
+  }
+
+  const stalkers = 4 + Math.floor(level * 0.8);
+  for (let i = 0; i < stalkers; i += 1) {
+    const angle = (i / stalkers) * Math.PI * 2 + 0.2;
+    enemies.push({
+      x: Math.cos(angle) * (18 + level * 1.3),
+      y: 3.4 + (i % 2) * 0.6,
+      z: Math.sin(angle) * (18 + level * 1.3),
+      radius: 0.74,
+      health: 1,
+      isGiant: false,
+      phase: 0.7 + i,
+      baseSpeed: 2.5 + level * 0.11,
+      flyHeight: 0.85,
+      chaseWeight: 0.86
+    });
+  }
+
+  if (level % 5 === 0 || level === MINIGAME_MAX_LEVEL) {
+    enemies.push({
+      x: 0,
+      y: 8.2,
+      z: 0,
+      radius: 2.2,
+      health: 18 + level * 2,
+      isGiant: true,
+      phase: 1.8,
+      driftX: 0.11,
+      driftZ: 0.1,
+      driftY: 0.03,
+      baseSpeed: 1.75 + level * 0.02,
+      flyHeight: 1.1,
+      chaseWeight: 0.58
+    });
+  }
+
+  return enemies;
+}
+
+function buildMinigameBombs(level, rng) {
+  const count = Math.min(18, 2 + level);
+  const bombs = [];
+  for (let i = 0; i < count; i += 1) {
+    const angle = (i / count) * Math.PI * 2 + rng() * 0.25;
+    const radius = 8 + level * 2.6 + (i % 3) * 2;
+    bombs.push({
+      x: Math.cos(angle) * radius,
+      y: 1.1 + (i % 2) * 0.4,
+      z: Math.sin(angle) * radius,
+      radius: 0.9,
+      blastRadius: 2.6,
+      cooldown: 3 + rng() * 2,
+      phase: rng() * Math.PI * 2
+    });
+  }
+  return bombs;
 }
 function computeCurve(templateId, i, stageIndex, worldIndex) {
   switch (templateId % 6) {

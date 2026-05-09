@@ -33,7 +33,16 @@ export function createCameraController(camera, player) {
     };
   }
 
-  function updateCamera() {
+  // Camera shake state
+  let shakeUntil = 0;
+  let shakeIntensity = 0;
+
+  function shake(intensity = 0.6, duration = 0.4) {
+    shakeIntensity = Math.max(shakeIntensity, intensity);
+    shakeUntil = Math.max(shakeUntil, performance.now() / 1000 + duration);
+  }
+
+  function updateCamera(dt) {
     const horizontalDistance = Math.cos(pitch) * distance;
     const targetCameraPos = new THREE.Vector3(
       player.position.x + Math.sin(yaw) * horizontalDistance,
@@ -42,6 +51,18 @@ export function createCameraController(camera, player) {
     );
 
     camera.position.lerp(targetCameraPos, 0.12);
+
+    // apply shake as a short lived jitter on the camera position
+    const now = performance.now() / 1000;
+    if (now < shakeUntil && shakeIntensity > 0) {
+      const remaining = Math.max(0, shakeUntil - now);
+      const fade = remaining / Math.max(0.0001, shakeUntil - (now - remaining));
+      const s = shakeIntensity * fade;
+      camera.position.x += (Math.random() * 2 - 1) * s;
+      camera.position.y += (Math.random() * 2 - 1) * s * 0.6;
+      camera.position.z += (Math.random() * 2 - 1) * s;
+    }
+
     camera.lookAt(player.position.x, player.position.y + lookHeight, player.position.z);
   }
 

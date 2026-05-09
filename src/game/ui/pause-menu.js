@@ -1,6 +1,6 @@
 import { ensureUiTheme, styleButton, styleOverlayRoot, stylePanel } from "./ui-theme.js";
 
-export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld, onResetSave, onToggleMusic, onOpenControls, onOpenShop, onOpenInfo }) {
+export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld, onReturnTitle, onResetSave, onToggleMusic, onOpenControls, onOpenShop, onOpenInfo }) {
   ensureUiTheme();
 
   const root = document.createElement("div");
@@ -48,6 +48,7 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
     addRailButton(actions, "Controls", () => typeof onOpenControls === "function" && onOpenControls());
     addRailButton(actions, "Shop", () => typeof onOpenShop === "function" && onOpenShop());
     addRailButton(actions, "Campaign Info", () => typeof onOpenInfo === "function" && onOpenInfo());
+    addRailButton(actions, "Back to Title", () => typeof onReturnTitle === "function" && onReturnTitle());
     addRailButton(actions, "Travel to Hub", () => {
       onSelectHub();
       close();

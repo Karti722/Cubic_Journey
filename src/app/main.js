@@ -1,4 +1,4 @@
-import { startGame } from "./game.js?v=18";
+import { startGame } from "./game.js?v=19";
 import { createTitleScreen } from "../game/ui/title-screen.js";
 
 const uiElement = document.getElementById("ui");
@@ -7,5 +7,6 @@ if (!uiElement) {
 }
 
 createTitleScreen({
-  onStart: () => startGame(uiElement)
+  onStart: () => startGame(uiElement, { startMode: "campaign" }),
+  onStartMinigame: () => startGame(uiElement, { startMode: "minigame" })
 });

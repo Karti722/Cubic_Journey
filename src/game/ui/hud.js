@@ -160,7 +160,7 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
   fpsDock.style.position = "fixed";
   fpsDock.style.right = "16px";
   fpsDock.style.top = "16px";
-  fpsDock.style.zIndex = "13";
+  fpsDock.style.zIndex = "80";
   fpsDock.style.pointerEvents = "none";
   fpsDock.style.minWidth = "88px";
   uiElement.appendChild(fpsDock);
@@ -253,7 +253,7 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
   setHelpOpen(false);
 
   function update(model) {
-    fpsChip.textContent = model.fps ? `FPS ${Math.round(model.fps)}` : "FPS --";
+    fpsChip.textContent = Number.isFinite(model.fps) ? `FPS ${Math.max(0, Math.round(model.fps))}` : "FPS --";
 
     const skipDockBottom = 24;
     const promptSeparation = 18;

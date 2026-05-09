@@ -183,7 +183,6 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
   chargeChip.style.padding = "8px 10px";
   chargeChip.style.fontWeight = "800";
   chargeChip.style.letterSpacing = "0.03em";
-  chargeChip.textContent = `Hold ${localStorage.getItem("cubic-journey-controls-v1")} to Charge`;
   fpsDock.appendChild(chargeChip);
 
   function setHudCollapsed(nextState) {

@@ -1,8 +1,16 @@
 # Cubic Journey
 
-Cubic Journey is a modular Three.js 3D platformer with a hub world, six campaign realms, boss-gated progression, an 11-level slash minigame, remappable controls, persistent save data, and a debug cheat menu for development builds.
+Cubic Journey is a modular Three.js 3D platformer built around a hub world, six campaign realms, boss-gated progression, an 11-level slash minigame, remappable controls, persistent save data, and a debug cheat menu for development builds.
 
-The codebase is intentionally split into small files so future contributors can trace game flow without digging through one giant script. The sections below explain every file in the repository except this README.
+The repository is intentionally split into small files so future contributors can understand where each piece of logic lives and how game state moves through the app. This document explains every file in the repository except this README itself.
+
+## Why This Stack
+
+Cubic Journey is built with plain HTML, CSS, and JavaScript so the game stays lightweight, easy to host, and easy to load in a browser without extra framework overhead. That matters here because the project is a single-page game rather than a multi-screen web app, and the goal is to keep the runtime focused on rendering, input, and gameplay instead of framework plumbing.
+
+Using React would add an extra layer of abstraction and bundle weight without solving a real problem for this project. The code is already organized into small modules, and the UI is mostly simple overlays and HUD panels that do not need a large component framework.
+
+The design also aims to be approachable for people who are not especially tech-savvy or into video games. A direct browser link makes the game easy to share, easy to open on a laptop or PC, and easy to play without installing anything first.
 
 ## Requirements
 
@@ -26,150 +34,207 @@ http://127.0.0.1:8123
 
 4. Stop the server with Ctrl+C.
 
-## High-Level Architecture
+## Architecture Summary
 
-- `index.html` loads the app entry point and hosts the root UI container.
-- `src/app/main.js` shows the title screen and starts either campaign or minigame mode.
-- `src/app/game.js` owns the game loop, runtime swaps, UI wiring, combat flow, and save/progression updates.
-- `src/game/world/level-generator.js` builds the hub, campaign stages, boss stages, and minigame layouts.
-- `src/game/world/runtime-builder.js` turns a level definition into live Three.js meshes, colliders, enemies, bombs, portals, and atmosphere.
-- `src/game/systems/*.js` handles movement, physics, and interaction resolution.
-- `src/game/ui/*.js` contains every overlay, menu, and HUD component.
-- `src/game/audio/audio-engine.js` and `src/game/audio/*` handle music and sound effects.
+- `index.html` is the browser shell and the only HTML file.
+- `src/app/main.js` is the application entry point.
+- `src/app/game.js` is the runtime coordinator that owns the main loop and wires together every system.
+- `src/game/world/level-generator.js` produces immutable level definitions.
+- `src/game/world/runtime-builder.js` converts those definitions into live meshes, colliders, enemies, bombs, and atmosphere.
+- `src/game/systems/*.js` contains the simulation rules for movement, physics, and interactions.
+- `src/game/ui/*.js` contains all overlays and HUD components.
+- `src/game/audio/audio-engine.js` plays all music and sound effects.
+
+```mermaid
+flowchart TD
+  A[index.html] --> B[src/app/main.js]
+  B --> C[src/app/game.js]
+  C --> D[src/game/config/game-config.js]
+  C --> E[src/game/campaign/campaign-state.js]
+  C --> F[src/game/world/level-generator.js]
+  F --> G[src/game/world/runtime-builder.js]
+  C --> H[src/game/systems/movement-system.js]
+  C --> I[src/game/systems/physics-system.js]
+  C --> J[src/game/systems/interaction-system.js]
+  C --> K[src/game/render/procedural-visuals.js]
+  C --> L[src/game/effects/action-effects.js]
+  C --> M[src/game/audio/audio-engine.js]
+  C --> N[src/game/ui/*]
+  C --> O[src/game/input/control-settings.js]
+  C --> P[src/game/persistence/save-store.js]
+  C --> Q[src/game/story/story-data.js]
+  C --> R[src/game/skills/skill-data.js]
+  C --> S[src/game/debug/debug-menu.js]
+  G --> T[Three.js scene, colliders, enemies, bombs, portals]
+  H --> U[Camera-relative movement]
+  I --> V[Jump, dash, gravity, collision]
+  J --> W[Slash, collect, portal, bomb contacts]
+  L --> X[Particles, slashes, explosions]
+```
 
 ## Repository Map
 
 ### Root Files
 
-- `index.html`: Minimal HTML shell for the game. It defines the page canvas host, injects a live-reload script for local development, and loads the ES module entry point in `src/app/main.js`.
-- `serve.py`: Local static server used during development. It serves the project from disk, forces the correct JavaScript MIME type, and emits live-reload events whenever files change.
-- `netlify.toml`: Deployment config for Netlify. It publishes the repository root and forces JavaScript files to be served with a `text/javascript` content type.
-- `.gitignore`: Ignores OS junk, log files, and editor settings so local noise does not get committed.
-- `favicon.ico`: Browser tab icon for the game.
-- `smoke_stdout.log`: Local smoke-test output log. This is a generated artifact, not part of the runtime.
-- `smoke_stderr.log`: Local smoke-test error log. This is a generated artifact, not part of the runtime.
-- `.github/workflows/`: Present as a folder placeholder, but there are no workflow files committed yet.
+- `index.html`: The page shell that mounts the game. It defines the `#ui` container, applies the basic page-level layout for the canvas, loads the live-reload script for local development, and imports `src/app/main.js` as the ES module bootstrap.
+- `serve.py`: A custom static server for development. It serves files from the repository root, sets JavaScript MIME types correctly, watches the tree for changes, and pushes Server-Sent Events reload notifications so browsers refresh automatically.
+- `netlify.toml`: Netlify deployment configuration. It tells Netlify to publish the repository root and ensures JavaScript files are delivered with the correct `text/javascript` content type and no-cache headers.
+- `.gitignore`: Excludes operating-system junk, editor folders, and log files. This keeps local artifacts such as smoke test logs and IDE settings out of version control.
+- `favicon.ico`: Browser tab icon used by the game page.
+- `smoke_stdout.log`: Captured stdout from local smoke tests. This is a generated diagnostic artifact and is not used by the game at runtime.
+- `smoke_stderr.log`: Captured stderr from local smoke tests. Like the stdout log, this is only useful for local debugging.
+- `.github/workflows/`: Empty placeholder folder for future CI workflows. There are no workflow YAML files checked in yet.
 
 ### `src/app`
 
-- `src/app/main.js`: App bootstrap. It finds the UI mount point, opens the title screen, and starts campaign or minigame mode based on the button the player chooses.
-- `src/app/game.js`: Main gameplay orchestrator. It creates the renderer, input system, camera controller, HUD, pause menu, shop, controls menu, loading screen, campaign state, audio engine, and procedural visuals. It also runs the main update loop, switches between hub and level runtimes, resolves combat and bombs, updates progression, and feeds data into the UI.
+- `src/app/main.js`: Bootstraps the application UI. It locates the `#ui` mount point, constructs the title screen, and routes the player either into campaign mode or into the slash minigame depending on which button is chosen.
+- `src/app/game.js`: The main orchestration layer. It creates the renderer, scene, camera controller, input layer, HUD, pause menu, controls editor, shop, campaign info modal, loading screen, audio engine, campaign state, action-effects manager, and procedural visuals. It also owns the game loop, world transitions, minigame rules, combat resolution, damage response, save writes, and the data model passed into the HUD and menus.
 
 ### `src/engine`
 
-- `src/engine/three.js`: Central re-export of Three.js. All gameplay files import from here instead of talking to the CDN directly.
-- `src/engine/core/render-context.js`: Builds the Three.js scene, camera, renderer, lighting, fog, shadow setup, and resize wiring.
-- `src/engine/camera/camera-controller.js`: Implements the orbit-style camera, mouse drag rotation, keyboard rotation/tilt, movement basis vectors, and camera shake.
-- `src/engine/input/input.js`: Keyboard and mouse input wrapper. It tracks pressed keys, action bindings, edge-triggered presses, and drag-based camera motion.
+- `src/engine/three.js`: Central Three.js re-export. Keeping the import in one place makes it easy to swap the underlying source later without touching every gameplay file.
+- `src/engine/core/render-context.js`: Builds the rendering context. It creates the scene, camera, renderer, shadow settings, tone mapping, fog, and base lighting, then attaches resize handling so the canvas stays sized to the viewport.
+- `src/engine/camera/camera-controller.js`: Implements the orbit camera. Mouse dragging rotates the camera, arrow keys nudge yaw and pitch, `getMoveBasis()` exposes camera-relative movement vectors, and `shake()` adds short-lived positional jitter for impact feedback.
+- `src/engine/input/input.js`: Keyboard and mouse input abstraction. It tracks raw key state, edge-triggered action presses, and mouse drag state, then exposes a binding-driven action API so gameplay code does not need to know individual key codes.
 
 ### `src/game/config`
 
-- `src/game/config/game-config.js`: Core tuning file for player movement, world definitions, portal rules, hub appearance, and campaign ordering. This is where the campaign worlds, stage counts, and sky colors are defined.
+- `src/game/config/game-config.js`: Primary gameplay tuning file. It defines the player movement constants, campaign world order, stage counts, portal gating rules, hub sky color, and whether each world has a sun object. If the campaign structure changes, this file needs to stay in sync with campaign progression and the level generator.
 
 ### `src/game/campaign`
 
-- `src/game/campaign/campaign-state.js`: Owns campaign progression state. It creates the default save structure, applies progression rules, tracks completed stages, key cubes, currency, skill unlocks, and world unlock state, and serializes the current save payload.
+- `src/game/campaign/campaign-state.js`: Campaign progression state machine. It creates the default save data, tracks current mode, current world and stage, counts completed stages, handles boss clears and key cube awards, enforces final-world access rules, and exposes serialization helpers for persistence.
 
 ### `src/game/world`
 
-- `src/game/world/level-generator.js`: Procedural level definition builder. It creates the hub definition, standard campaign stages, boss stages, and slash minigame layouts, including platform placement, collectibles, jump pads, dash orbs, enemies, and bombs.
-- `src/game/world/runtime-builder.js`: Runtime scene builder and updater. It converts a level definition into actual meshes, colliders, atmosphere, scenery, portals, enemies, bombs, and goal objects, then updates them every frame.
+- `src/game/world/level-generator.js`: Deterministic level definition generator. It uses seeded random numbers to create the hub layout, regular campaign stages, boss stages, and all 11 slash-minigame levels. It decides where platforms, collectibles, jump pads, dash orbs, enemies, and bombs appear, and it marks which levels count as boss stages.
+- `src/game/world/runtime-builder.js`: Runtime scene builder and per-frame updater. It turns a generated level definition into actual Three.js meshes and runtime objects, builds colliders, creates moving platforms, adds scenery and atmosphere, spawns enemies and bombs, and updates them every frame with movement, pulsing, chase logic, and respawn timing.
 
 ### `src/game/systems`
 
-- `src/game/systems/movement-system.js`: Converts camera-relative input into horizontal player velocity.
-- `src/game/systems/physics-system.js`: Applies jumps, wall jumps, dash behavior, gravity, platform magnet behavior, grounded collision, and fall reset handling.
-- `src/game/systems/interaction-system.js`: Resolves collectibles, jump pads, dash orbs, portal proximity, goal checks, enemy contact, sword slashes, and bomb contact/explosion logic.
+- `src/game/systems/movement-system.js`: Converts input into horizontal velocity. It reads the camera basis, resolves forward/back/left/right actions, and writes the resulting movement vector into the player velocity.
+- `src/game/systems/physics-system.js`: Applies jump, dash, gravity, and collision rules. It resolves grounded landing, wall contact, wall jump behavior, extra air jumps, glide, platform magnet snapping, and fall resets.
+- `src/game/systems/interaction-system.js`: Handles non-physics gameplay interactions. It resolves collectible pickup, jump pad activation, dash orb pickup, portal proximity checks, goal reach checks, enemy stomp and contact damage, sword slash hit detection, and bomb touch/explosion resolution.
 
 ### `src/game/render`
 
-- `src/game/render/procedural-visuals.js`: Builds the procedural texture set and the stylized player and goblin meshes. It is also responsible for the canvas-based textures used throughout the game world.
+- `src/game/render/procedural-visuals.js`: Procedural art and character builder. It generates all canvas textures used by the game world, then constructs the player avatar and goblin enemy meshes from lit Three.js primitives with materials that use those textures.
 
 ### `src/game/effects`
 
-- `src/game/effects/action-effects.js`: Owns particles, slash arcs, sphere slashes, explosion visuals, and other combat feedback effects.
+- `src/game/effects/action-effects.js`: Combat and action feedback system. It maintains particle pools, slash meshes, sphere slash meshes, and explosion visuals, and it exposes emit helpers that gameplay code calls when the player jumps, dashes, slashes, gets hit, lands, or triggers a blast.
 
 ### `src/game/audio`
 
-- `src/game/audio/audio-engine.js`: Manages music playback, looping tracks, volume, audio unlocking, and pooled sound effects.
+- `src/game/audio/audio-engine.js`: Audio playback manager. It unlocks audio after user interaction, manages looping background music, switches tracks by game state, and keeps pooled sound effect channels so repeated sounds can overlap cleanly.
 
 #### `src/game/audio/music`
 
-- `src/game/audio/music/title.mp3`: Title screen music.
-- `src/game/audio/music/hub.mp3`: Hub world music.
-- `src/game/audio/music/meadow.mp3`: Meadow realm music.
-- `src/game/audio/music/canyon.mp3`: Canyon realm music.
-- `src/game/audio/music/nebula.mp3`: Nebula realm music.
-- `src/game/audio/music/obsidian.mp3`: Obsidian realm music.
-- `src/game/audio/music/aurora.mp3`: Aurora realm music.
-- `src/game/audio/music/core.mp3`: Core Rift music.
-- `src/game/audio/music/boss.mp3`: Boss encounter music.
+- `src/game/audio/music/title.mp3`: The title-screen track. It is used before gameplay begins.
+- `src/game/audio/music/hub.mp3`: The hub-world background track. It plays when the player is in the central hub.
+- `src/game/audio/music/meadow.mp3`: The Meadow Rise stage track.
+- `src/game/audio/music/canyon.mp3`: The Canyon Forge stage track.
+- `src/game/audio/music/nebula.mp3`: The Nebula Heights stage track.
+- `src/game/audio/music/obsidian.mp3`: The Obsidian Crown stage track.
+- `src/game/audio/music/aurora.mp3`: The Aurora Vault stage track.
+- `src/game/audio/music/core.mp3`: The Core Rift stage track.
+- `src/game/audio/music/boss.mp3`: The boss-encounter track used when the game enters a boss state.
 
 #### `src/game/audio/sfx`
 
-- `src/game/audio/sfx/jump.mp3`: Jump and movement jump feedback.
-- `src/game/audio/sfx/dash.mp3`: Dash feedback.
-- `src/game/audio/sfx/collect.mp3`: Collectible pickup sound.
-- `src/game/audio/sfx/portal.mp3`: Portal interaction sound.
-- `src/game/audio/sfx/key.mp3`: Key cube pickup sound.
-- `src/game/audio/sfx/boss.mp3`: Boss-specific sound cue.
-- `src/game/audio/sfx/enemy.mp3`: Generic enemy hit or slash-impact sound.
-- `src/game/audio/sfx/enemy-defeat.mp3`: Enemy defeat and shared explosion sound.
+- `src/game/audio/sfx/jump.mp3`: Played for jumps and jump-related movement feedback.
+- `src/game/audio/sfx/dash.mp3`: Played when the player dashes.
+- `src/game/audio/sfx/collect.mp3`: Played when collectibles are gathered.
+- `src/game/audio/sfx/portal.mp3`: Played when entering or using portals.
+- `src/game/audio/sfx/key.mp3`: Played when a key cube is awarded.
+- `src/game/audio/sfx/boss.mp3`: Boss-specific sound cue used by boss progression and encounter moments.
+- `src/game/audio/sfx/enemy.mp3`: Generic enemy hit and slash-impact sound.
+- `src/game/audio/sfx/enemy-defeat.mp3`: Shared defeat/explosion sound used for enemy defeat and explosive feedback.
 - `src/game/audio/sfx/damage.mp3`: Player damage feedback sound.
 - `src/game/audio/sfx/pause.mp3`: Pause and unpause sound.
-- `src/game/audio/sfx/credits.mp3`: Credits or end-screen sound.
+- `src/game/audio/sfx/credits.mp3`: End-screen and credits sound.
 
 ### `src/game/input`
 
-- `src/game/input/control-settings.js`: Stores the default key bindings, loads and saves custom bindings from localStorage, and supports resetting to defaults.
+- `src/game/input/control-settings.js`: Persistent control binding store. It defines the shipped keyboard layout, loads overrides from localStorage, saves rebinding changes, resets defaults, and clears stored bindings when requested.
 
 ### `src/game/persistence`
 
-- `src/game/persistence/save-store.js`: Persists campaign save data in localStorage, validates loaded values, and merges saves with the current default structure.
+- `src/game/persistence/save-store.js`: Save-game persistence layer. It reads and writes the campaign save object in localStorage and merges loaded data back into the current default structure so missing fields do not break older saves.
 
 ### `src/game/skills`
 
-- `src/game/skills/skill-data.js`: Defines the unlockable movement upgrades and the default owned/not-owned state for each skill.
+- `src/game/skills/skill-data.js`: Skill catalog and default ownership state. It defines the upgrade list used by the shop and the initial unlocked/locked state for each skill.
 
 ### `src/game/story`
 
-- `src/game/story/story-data.js`: Stores the campaign premise, world narrative blurbs, and boss names used by the HUD and info menus.
+- `src/game/story/story-data.js`: Story text data. It stores the campaign premise, one-liner world narratives, and boss names used by the campaign info menu and pause menu.
 
 ### `src/game/debug`
 
-- `src/game/debug/debug-menu.js`: Developer cheats menu used in the debug branch. It exposes travel shortcuts, progress editing, skill toggles, and other test-only controls.
+- `src/game/debug/debug-menu.js`: Developer-only cheat and test interface. It exposes world travel, skill toggles, save editing, progress shortcuts, and end-credit triggers so the branch can be tested without normal progression flow.
 
 ### `src/game/ui`
 
-- `src/game/ui/ui-theme.js`: Shared design system for all overlays. It injects the global UI CSS, styles the glass panels and buttons, and keeps the menus visually consistent.
-- `src/game/ui/title-screen.js`: Animated title screen with play, minigame, and source-code buttons, plus the scrolling background treatment.
-- `src/game/ui/hud.js`: In-game HUD, status chips, charge indicator, portal prompts, skip prompts, and campaign info toggle.
-- `src/game/ui/pause-menu.js`: Pause overlay with resume, music, controls, shop, campaign info, save reset, and world-travel actions.
-- `src/game/ui/controls-menu.js`: Controls rebinding overlay. It lists every action, captures the next key press, and lets the player clear or reset mappings.
-- `src/game/ui/world-menu.js`: Quick world-travel overlay for hub and campaign navigation.
-- `src/game/ui/shop-menu.js`: Skill shop overlay for spending coins on persistent upgrades.
-- `src/game/ui/loading-screen.js`: Loading overlay used while worlds are being built or swapped.
-- `src/game/ui/campaign-info-menu.js`: Story and progression modal that summarizes the current world, campaign status, key cubes, and boss context.
+- `src/game/ui/ui-theme.js`: Shared UI theme and component styling helpers. It injects the project-wide CSS, defines the glass-panel look, button variants, chips, scrollbars, overlays, cards, headings, and text styles, and keeps all menus visually consistent.
+- `src/game/ui/title-screen.js`: Title screen overlay and start gate. It renders the opening panel, animates the background, opens the campaign or minigame, and includes the source-code link.
+- `src/game/ui/hud.js`: In-game HUD builder. It shows world, stage, currency, key-cube, boss, objective, portal prompt, skip prompt, and charge-ready state, and it also provides the campaign info toggle and HUD collapse toggle.
+- `src/game/ui/pause-menu.js`: Pause overlay and world navigation screen. It presents resume, music, controls, shop, campaign info, title return, hub return, and save reset actions, plus the world list and campaign statistics.
+- `src/game/ui/controls-menu.js`: Input rebinding interface. It lists every bound action, captures the next pressed key when rebinding, allows clearing bindings, and can restore the defaults.
+- `src/game/ui/world-menu.js`: Fast travel and world overview menu. It summarizes each world, shows whether it is accessible, allows travel to the hub or a specific world stage, and exposes a compact player guide.
+- `src/game/ui/shop-menu.js`: Skill shop overlay. It displays every unlockable movement skill, shows current ownership and coin cost, and calls back into campaign state when the player buys a skill.
+- `src/game/ui/loading-screen.js`: Loading overlay used during world transitions. It shows a loading message, animated progress bar, and a disabled status button while the game is constructing a new runtime.
+- `src/game/ui/campaign-info-menu.js`: Campaign summary modal. It shows the current world, story text, progress counters, key cubes, currency, skill count, and boss name so players can check campaign status without leaving the game.
 
-### Generated or Local-Only Files
+## Generated or Local-Only Files
 
-- `smoke_stdout.log` and `smoke_stderr.log` are local diagnostics from previous smoke checks. They are useful when debugging the development environment, but they are not part of the game logic.
+- `smoke_stdout.log` and `smoke_stderr.log` are local diagnostics from previous smoke checks. They are useful when debugging the development environment, but they are not part of the playable game.
 - The empty `.github/workflows/` folder is a placeholder for future CI configuration if you want to add automated checks later.
 
 ## How the Runtime Fits Together
 
 1. The browser opens `index.html`, which loads `src/app/main.js`.
-2. The title screen hands control to `src/app/game.js` once the player starts a session.
-3. `game.js` creates the scene, renderer, camera, input handler, HUD, menus, audio engine, and procedural visuals.
-4. The campaign state decides which world or stage should be active.
-5. `level-generator.js` produces a definition for that hub, stage, boss arena, or minigame level.
-6. `runtime-builder.js` converts the definition into live meshes, colliders, enemies, bombs, and scenery.
-7. The movement, physics, and interaction systems update the player and world interactions every frame.
-8. The HUD and menus read the current model state and update the interface.
+2. `main.js` creates the title screen and waits for the player to choose campaign or minigame.
+3. `game.js` builds the runtime, menus, visuals, audio, and state containers.
+4. The campaign state decides whether the player is in the hub or a specific world and stage.
+5. `level-generator.js` produces a deterministic definition for that location.
+6. `runtime-builder.js` converts the definition into live meshes and runtime objects.
+7. The movement, physics, and interaction systems run every frame to update the player and world.
+8. The HUD and overlay menus read the current model data and keep the UI in sync with gameplay.
+
+## Contributor Workflow
+
+When adding a new gameplay feature, start by finding the file that owns the state, not the menu or visual wrapper.
+
+- New movement or combat rule: update `src/game/systems/*.js` first, then wire the result into `src/app/game.js` and the relevant UI.
+- New stage or world content: update `src/game/config/game-config.js`, `src/game/world/level-generator.js`, and `src/game/campaign/campaign-state.js` together so progression and content stay consistent.
+- New runtime object or enemy behavior: add it in `src/game/world/runtime-builder.js`, then make sure `src/game/systems/interaction-system.js` or `src/app/game.js` can react to it.
+- New overlay or HUD element: add it under `src/game/ui/`, then feed it data from `src/app/game.js`.
+- New persistent setting: define its defaults in the relevant state module, then wire load and save behavior through `src/game/persistence/save-store.js` or `src/game/input/control-settings.js`.
+- New sound or music cue: add the asset under `src/game/audio/` and register it in `src/game/audio/audio-engine.js`.
+
+A good rule is to change data definitions first, runtime behavior second, and UI last. That keeps state, gameplay, and presentation from drifting apart.
+
+Concrete examples:
+
+- Add a new world: define it in `src/game/config/game-config.js`, add the narrative line in `src/game/story/story-data.js`, update unlock/progression behavior in `src/game/campaign/campaign-state.js`, and teach `src/game/world/level-generator.js` how many stages and which boss it should generate.
+- Add a new skill: register the default owned state in `src/game/skills/skill-data.js`, persist it through the campaign state, expose the effect in `src/app/game.js` or the relevant system module, and surface it in the shop UI so players can buy it.
+- Add a new HUD element: extend `src/app/game.js` to include the new model field, then render it in `src/game/ui/hud.js` so the display logic stays separate from gameplay logic.
+- Add a new sound effect: place the asset in `src/game/audio/sfx/`, add it to the sound map in `src/game/audio/audio-engine.js`, and call `audio.playSfx(...)` from the gameplay code that owns the event.
+- Add a new overlay: build the menu in `src/game/ui/`, register it in `src/app/game.js`, and pass in only the state and callbacks it needs.
+
+## Glossary
+
+- Campaign state: The save-backed progress model that remembers worlds, stages, key cubes, currency, and skills.
+- Runtime: The live Three.js scene for the currently loaded hub, stage, or minigame.
+- Level definition: The plain data produced by `level-generator.js` before anything is turned into meshes.
+- Collider: The axis-aligned box used by the physics system for platform and wall contact.
+- Action effects: Temporary combat VFX such as slash arcs, particles, and explosions.
+- HUD: The on-screen status interface for world, stage, objective, and prompt information.
 
 ## Notes For Future Contributors
 
-- Keep `game-config.js`, `campaign-state.js`, `level-generator.js`, and `runtime-builder.js` in sync when changing stage counts or world order.
+- Keep `game-config.js`, `campaign-state.js`, `level-generator.js`, and `runtime-builder.js` in sync when changing stage counts, world order, or unlock rules.
 - If you add new files, document them here so the repository map stays accurate for future open-source readers.
 - If you add automated CI later, place it in `.github/workflows/` and describe it here.
-- The project currently stays bundle-free and static on purpose, so avoid introducing a build step unless there is a strong reason to do so.
+- The project is intentionally bundle-free and static on purpose, so avoid introducing a build step unless there is a strong reason to do so.

@@ -15,6 +15,15 @@ export function buildWorldRuntime(scene, definition, visuals) {
   const scenery = buildScenery(definition, textures);
   root.add(scenery.group);
 
+  // Add bright sun mesh for sunny worlds
+  if (definition.hasSun) {
+    const sunGeometry = new THREE.SphereGeometry(6, 32, 32);
+    const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, emissive: 0xffffff });
+    const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
+    sunMesh.position.set(80, 120, -100);
+    root.add(sunMesh);
+  }
+
   const colliders = [];
   const movingPlatforms = [];
   const collectibles = [];
@@ -214,6 +223,13 @@ export function buildWorldRuntime(scene, definition, visuals) {
     );
     orb.position.set(portal.position.x, portal.position.y, portal.position.z);
     root.add(orb);
+
+    // Add colored point light for unlocked portals
+    if (portal.unlocked) {
+      const portalLight = new THREE.PointLight(portal.color, 13.2, 28);
+      portalLight.position.set(portal.position.x, portal.position.y + 0.8, portal.position.z);
+      root.add(portalLight);
+    }
 
     portals.push({ ...portal, ring, orb });
   }

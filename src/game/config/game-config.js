@@ -22,7 +22,8 @@ export const GAME_CONFIG = {
       hasBoss: true,
       keyCubeReward: true,
       baseColor: 0x3fa34d,
-      skyColor: 0x88d7ff
+      skyColor: 0x88d7ff,
+      hasSun: true
     },
     {
       id: "canyon",
@@ -31,7 +32,8 @@ export const GAME_CONFIG = {
       hasBoss: true,
       keyCubeReward: true,
       baseColor: 0xc16e2d,
-      skyColor: 0xffc58a
+      skyColor: 0xffc58a,
+      hasSun: true
     },
     {
       id: "nebula",
@@ -40,7 +42,8 @@ export const GAME_CONFIG = {
       hasBoss: true,
       keyCubeReward: true,
       baseColor: 0x5f73d9,
-      skyColor: 0x7fa0ff
+      skyColor: 0x7fa0ff,
+      hasSun: false
     },
     {
       id: "obsidian",
@@ -49,7 +52,8 @@ export const GAME_CONFIG = {
       hasBoss: true,
       keyCubeReward: true,
       baseColor: 0x6a5f7f,
-      skyColor: 0xb69acd
+      skyColor: 0xb69acd,
+      hasSun: false
     },
     {
       id: "aurora",
@@ -58,7 +62,8 @@ export const GAME_CONFIG = {
       hasBoss: true,
       keyCubeReward: true,
       baseColor: 0x37a8c8,
-      skyColor: 0xc2f4ff
+      skyColor: 0xc2f4ff,
+      hasSun: true
     },
     {
       id: "core",
@@ -67,7 +72,8 @@ export const GAME_CONFIG = {
       hasBoss: true,
       keyCubeReward: false,
       baseColor: 0xb13f57,
-      skyColor: 0xf6a2b3
+      skyColor: 0xf6a2b3,
+      hasSun: false
     }
   ],
   hubSkyColor: 0x9ed8ff,

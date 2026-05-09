@@ -1,7 +1,7 @@
 export function createInput(targetElement, onDrag, initialBindings = {}) {
   const keys = {};
   const prevKeys = {};
-  const bindings = cloneBindings(initialBindings);
+  const bindings = initialBindings && typeof initialBindings === "object" ? initialBindings : {};
 
   let isDragging = false;
   let lastMouseX = 0;
@@ -48,7 +48,8 @@ export function createInput(targetElement, onDrag, initialBindings = {}) {
     isActionDown,
     isActionPressed,
     rebindAction,
-    clearAction
+    clearAction,
+    getBindings: () => bindings
   };
 
   function isActionDown(action) {
@@ -89,14 +90,4 @@ export function createInput(targetElement, onDrag, initialBindings = {}) {
     }
     bindings[action] = [];
   }
-}
-
-function cloneBindings(source) {
-  const cloned = {};
-
-  for (const [action, codes] of Object.entries(source || {})) {
-    cloned[action] = Array.isArray(codes) ? [...codes] : [];
-  }
-
-  return cloned;
 }

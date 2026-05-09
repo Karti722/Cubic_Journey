@@ -18,6 +18,10 @@ export function createProceduralVisuals() {
 function createTextures() {
   return {
     stone: makeTexture(64, 64, drawStoneTexture, { repeat: true }),
+    rock: makeTexture(64, 64, drawRockTexture, { repeat: true }),
+    dirt: makeTexture(64, 64, drawDirtTexture, { repeat: true }),
+    snow: makeTexture(64, 64, drawSnowTexture, { repeat: true }),
+    cloud: makeTexture(64, 64, drawCloudTexture, { repeat: false }),
     coin: makeTexture(64, 64, drawCoinTexture, { repeat: false }),
     jumpPad: makeTexture(64, 64, drawJumpPadTexture, { repeat: false }),
     energy: makeTexture(64, 64, drawEnergyTexture, { repeat: false }),
@@ -257,6 +261,100 @@ function drawStoneTexture(context, width, height) {
   context.lineTo(28, 42);
   context.lineTo(44, 50);
   context.stroke();
+}
+
+function drawRockTexture(context, width, height) {
+  const gradient = context.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, "#74808a");
+  gradient.addColorStop(0.5, "#505a65");
+  gradient.addColorStop(1, "#2d3640");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = "rgba(255,255,255,0.1)";
+  for (let i = 0; i < 85; i += 1) {
+    const size = Math.random() * 6 + 2;
+    context.beginPath();
+    context.arc(Math.random() * width, Math.random() * height, size, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  context.strokeStyle = "rgba(0,0,0,0.22)";
+  context.lineWidth = 1.4;
+  for (let y = 0; y < height; y += 8) {
+    context.beginPath();
+    context.moveTo(0, y + (y % 16 ? 1 : -1));
+    context.lineTo(width, y + (y % 16 ? 3 : 1));
+    context.stroke();
+  }
+}
+
+function drawDirtTexture(context, width, height) {
+  const gradient = context.createLinearGradient(0, 0, 0, height);
+  gradient.addColorStop(0, "#7a5a34");
+  gradient.addColorStop(0.5, "#624628");
+  gradient.addColorStop(1, "#3c2818");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = "rgba(255,255,255,0.07)";
+  for (let i = 0; i < 65; i += 1) {
+    const w = Math.random() * 5 + 1;
+    const h = Math.random() * 3 + 1;
+    context.fillRect(Math.random() * width, Math.random() * height, w, h);
+  }
+
+  context.strokeStyle = "rgba(20, 12, 5, 0.18)";
+  context.lineWidth = 1;
+  context.beginPath();
+  for (let y = 0; y < height; y += 7) {
+    context.moveTo(0, y);
+    context.lineTo(width, y + 2);
+  }
+  context.stroke();
+}
+
+function drawSnowTexture(context, width, height) {
+  const gradient = context.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, "#ffffff");
+  gradient.addColorStop(1, "#d8f2ff");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = "rgba(146, 205, 255, 0.16)";
+  for (let i = 0; i < 120; i += 1) {
+    const size = Math.random() * 2 + 0.8;
+    context.fillRect(Math.random() * width, Math.random() * height, size, size);
+  }
+
+  context.strokeStyle = "rgba(255,255,255,0.45)";
+  context.lineWidth = 1.2;
+  context.beginPath();
+  context.moveTo(0, height * 0.36);
+  context.lineTo(width, height * 0.36);
+  context.moveTo(0, height * 0.67);
+  context.lineTo(width, height * 0.67);
+  context.stroke();
+}
+
+function drawCloudTexture(context, width, height) {
+  const gradient = context.createRadialGradient(width / 2, height / 2, 2, width / 2, height / 2, width / 2);
+  gradient.addColorStop(0, "rgba(255,255,255,0.98)");
+  gradient.addColorStop(0.58, "rgba(255,255,255,0.72)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = "rgba(255,255,255,0.6)";
+  context.beginPath();
+  context.arc(width * 0.35, height * 0.55, width * 0.22, 0, Math.PI * 2);
+  context.arc(width * 0.52, height * 0.4, width * 0.28, 0, Math.PI * 2);
+  context.arc(width * 0.67, height * 0.57, width * 0.21, 0, Math.PI * 2);
+  context.arc(width * 0.5, height * 0.66, width * 0.24, 0, Math.PI * 2);
+  context.fill();
+
+  context.fillStyle = "rgba(180, 220, 255, 0.12)";
+  context.fillRect(0, height * 0.72, width, height * 0.1);
 }
 
 function drawCoinTexture(context, width, height) {

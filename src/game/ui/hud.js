@@ -156,6 +156,26 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
   collapsedHudTab.textContent = "Show HUD ▸";
   root.appendChild(collapsedHudTab);
 
+  const fpsDock = document.createElement("div");
+  fpsDock.style.position = "fixed";
+  fpsDock.style.right = "16px";
+  fpsDock.style.top = "16px";
+  fpsDock.style.zIndex = "13";
+  fpsDock.style.pointerEvents = "none";
+  fpsDock.style.minWidth = "88px";
+  uiElement.appendChild(fpsDock);
+
+  const fpsChip = document.createElement("div");
+  fpsChip.className = "cj-chip";
+  fpsChip.style.justifyContent = "center";
+  fpsChip.style.padding = "10px 12px";
+  fpsChip.style.background = "rgba(10, 16, 28, 0.96)";
+  fpsChip.style.border = "1px solid rgba(126, 231, 255, 0.22)";
+  fpsChip.style.boxShadow = "0 18px 44px rgba(0,0,0,0.42)";
+  fpsChip.style.fontWeight = "800";
+  fpsChip.textContent = "FPS --";
+  fpsDock.appendChild(fpsChip);
+
   function setHudCollapsed(nextState) {
     hudCollapsed = nextState;
     panel.style.display = hudCollapsed ? "none" : "block";
@@ -233,6 +253,8 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
   setHelpOpen(false);
 
   function update(model) {
+    fpsChip.textContent = model.fps ? `FPS ${Math.round(model.fps)}` : "FPS --";
+
     const skipDockBottom = 24;
     const promptSeparation = 18;
 

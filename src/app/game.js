@@ -86,6 +86,8 @@ export function startGame(uiElement) {
   let isWorldLoading = false;
   const loadingScreenDelayMs = 220;
   let endCreditsActive = false;
+  let fps = 0;
+  let fpsSmoothing = 0.92;
 
   let campaignInfoReturnToPause = false;
 
@@ -417,6 +419,7 @@ export function startGame(uiElement) {
     if (campaign.state.mode === "hub") {
       return {
         mode: "hub",
+        fps,
         storyLine: STORY.premise,
         completedStages: campaign.state.totalCompletedStages,
         totalStages: campaign.state.totalStages,
@@ -441,6 +444,7 @@ export function startGame(uiElement) {
       : "";
     return {
       mode: "level",
+      fps,
       worldName: world.name,
       stageNumber: campaign.state.stageIndex + 1,
       stageCount: getWorldStageCount(world),
@@ -461,6 +465,7 @@ export function startGame(uiElement) {
     if (campaign.state.mode === "hub") {
       return {
         mode: "hub",
+        fps,
         worldName: "World Hub",
         storyLine: STORY.premise,
         completedStages: campaign.state.totalCompletedStages,
@@ -782,6 +787,8 @@ export function startGame(uiElement) {
 
     const dt = Math.min(clock.getDelta(), 0.033);
     const elapsed = clock.elapsedTime;
+    const frameFps = dt > 0 ? 1 / dt : 0;
+    fps = fps > 0 ? fps * fpsSmoothing + frameFps * (1 - fpsSmoothing) : frameFps;
 
     if (isWorldLoading) {
       renderer.render(scene, camera);
@@ -873,7 +880,7 @@ export function startGame(uiElement) {
     }
     if (dashPressed) {
       audio.playSfx("dash", 0.7);
-      effects.emit("dash", player.position, getDashDirectionVector(), 0.55, 8);
+      effects.emit("dash", player.position, getDashDirectionVector(), 0.8, 14);
     }
 
     const launched = applyJumpPads(

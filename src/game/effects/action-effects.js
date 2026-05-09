@@ -36,18 +36,18 @@ export function createActionEffects(scene) {
       if (!particle) break;
 
       particle.active = true;
-      particle.ttl = 0.42 + Math.random() * 0.2;
+      particle.ttl = kind === "dash" ? 0.58 + Math.random() * 0.22 : 0.42 + Math.random() * 0.2;
       particle.mesh.visible = true;
       particle.mesh.position.copy(position);
       particle.mesh.material.color.setHex(colors[kind] || 0xffffff);
       particle.mesh.material.emissive.setHex(colors[kind] || 0xffffff);
-      particle.mesh.material.opacity = 0.9;
+      particle.mesh.material.opacity = kind === "dash" ? 1 : 0.9;
       particle.velocity.set(
         (Math.random() - 0.5) * spread + velocity.x,
         Math.random() * spread + velocity.y,
         (Math.random() - 0.5) * spread + velocity.z
       );
-      particle.mesh.scale.setScalar(0.9 + Math.random() * 0.7);
+      particle.mesh.scale.setScalar(kind === "dash" ? 1.2 + Math.random() * 1.0 : 0.9 + Math.random() * 0.7);
     }
   }
 

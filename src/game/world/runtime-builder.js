@@ -11,6 +11,9 @@ export function buildWorldRuntime(scene, definition, visuals) {
   const atmosphere = buildAtmosphere(definition.skyColor, textures);
   root.add(atmosphere.group);
 
+  const scenery = buildScenery(definition, textures);
+  root.add(scenery.group);
+
   const colliders = [];
   const collectibles = [];
   const jumpPads = [];
@@ -236,6 +239,58 @@ export function buildWorldRuntime(scene, definition, visuals) {
   };
 }
 
+function buildScenery(definition, textures) {
+  const group = new THREE.Group();
+  const bounds = getDefinitionBounds(definition);
+  const spanX = Math.max(24, bounds.maxX - bounds.minX);
+  const spanZ = Math.max(24, bounds.maxZ - bounds.minZ);
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerZ = (bounds.minZ + bounds.maxZ) / 2;
+  const ringRadius = Math.max(spanX, spanZ) * 0.72 + 20;
+  const mountainCount = definition.type === "hub" ? 10 : definition.isBossStage ? 10 : 8;
+
+  if (definition.type === "hub") {
+    addRingRocks(group, textures, centerX, centerZ, ringRadius * 0.52, 8);
+  }
+
+  for (let i = 0; i < mountainCount; i += 1) {
+    const angle = (i / mountainCount) * Math.PI * 2;
+    const distance = ringRadius + (i % 2) * 4;
+    const x = centerX + Math.cos(angle) * distance;
+    const z = centerZ + Math.sin(angle) * distance;
+    const height = 10 + (i % 3) * 4 + (definition.isBossStage ? 5 : 0);
+    addMountain(group, textures, x, -6.5, z, 10 + (i % 4) * 3, height, i % 2 === 0);
+  }
+
+  const cloudCount = definition.type === "hub" ? 7 : 9;
+  for (let i = 0; i < cloudCount; i += 1) {
+    const angle = (i / cloudCount) * Math.PI * 2 + 0.35;
+    const distance = ringRadius * 0.55 + 8 + (i % 3) * 3;
+    const x = centerX + Math.cos(angle) * distance;
+    const y = 18 + (i % 4) * 2.6 + (definition.isBossStage ? 2 : 0);
+    const z = centerZ + Math.sin(angle) * distance;
+    addCloud(group, textures, x, y, z, 4.2 + (i % 3) * 1.45);
+  }
+
+  if (definition.type !== "hub") {
+    const ridgeCount = definition.isBossStage ? 5 : 4;
+    for (let i = 0; i < ridgeCount; i += 1) {
+      const offset = -14 - i * 6;
+      addCliff(group, textures, bounds.minX - 12, -5.8 + i * 0.3, bounds.minZ + offset, 8 + i * 2, 12 + i * 1.8, 5.5 + i * 0.8);
+      addCliff(group, textures, bounds.maxX + 12, -5.8 + i * 0.3, bounds.maxZ - offset, 8 + i * 2, 12 + i * 1.8, 5.5 + i * 0.8);
+    }
+  }
+
+  if (definition.isBossStage) {
+    addPillar(group, textures, centerX - 18, -6.8, centerZ - 14, 4.4, 19, 4.4, true);
+    addPillar(group, textures, centerX + 18, -6.8, centerZ - 14, 4.4, 19, 4.4, true);
+    addPillar(group, textures, centerX - 18, -6.8, centerZ + 14, 4.4, 19, 4.4, true);
+    addPillar(group, textures, centerX + 18, -6.8, centerZ + 14, 4.4, 19, 4.4, true);
+  }
+
+  return { group };
+}
+
 function buildAtmosphere(skyColor, textures) {
   const group = new THREE.Group();
 
@@ -281,6 +336,290 @@ function buildAtmosphere(skyColor, textures) {
     glowGroup,
     spinSpeed: 0.02
   };
+}
+
+function addMountain(group, textures, x, y, z, radius, height, snowCap = false) {
+  const mountain = new THREE.Group();
+  mountain.position.set(x, y, z);
+  mountain.rotation.y = Math.random() * Math.PI * 2;
+
+  const main = new THREE.Mesh(
+    new THREE.ConeGeometry(radius, height, 6, 1),
+    new THREE.MeshStandardMaterial({
+      color: 0x7c8794,
+      map: textures.rock,
+      roughness: 0.96,
+      metalness: 0.02,
+      emissive: 0x0b1016,
+      emissiveIntensity: 0.04
+    })
+  );
+  main.castShadow = true;
+  main.receiveShadow = true;
+  mountain.add(main);
+
+  const shoulder = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius * 0.88, radius * 1.05, height * 0.34, 6),
+    new THREE.MeshStandardMaterial({
+      color: 0x61707f,
+      map: textures.dirt,
+      roughness: 0.98,
+      metalness: 0.01,
+      emissive: 0x0a0f12,
+      emissiveIntensity: 0.03
+    })
+  );
+  shoulder.position.y = -height * 0.22;
+  shoulder.castShadow = true;
+  shoulder.receiveShadow = true;
+  mountain.add(shoulder);
+
+  if (snowCap || height > 14) {
+    const cap = new THREE.Mesh(
+      new THREE.ConeGeometry(radius * 0.45, height * 0.3, 6, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0xf6fbff,
+        map: textures.snow,
+        roughness: 0.86,
+        metalness: 0.02,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.02
+      })
+    );
+    cap.position.y = height * 0.34;
+    cap.castShadow = true;
+    cap.receiveShadow = true;
+    mountain.add(cap);
+  }
+
+  group.add(mountain);
+}
+
+function addCliff(group, textures, x, y, z, width, height, depth) {
+  const cliff = new THREE.Group();
+  cliff.position.set(x, y, z);
+  cliff.rotation.y = Math.random() * Math.PI * 2;
+
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(width, height, depth),
+    new THREE.MeshStandardMaterial({
+      color: 0x5d6974,
+      map: textures.rock,
+      roughness: 0.96,
+      metalness: 0.02,
+      emissive: 0x090d12,
+      emissiveIntensity: 0.03
+    })
+  );
+  base.castShadow = true;
+  base.receiveShadow = true;
+  cliff.add(base);
+
+  const wedge = new THREE.Mesh(
+    new THREE.ConeGeometry(Math.max(width, depth) * 0.6, height * 0.55, 4, 1),
+    new THREE.MeshStandardMaterial({
+      color: 0x70808e,
+      map: textures.stone,
+      roughness: 0.94,
+      metalness: 0.02
+    })
+  );
+  wedge.position.y = height * 0.43;
+  wedge.rotation.y = Math.PI / 4;
+  cliff.add(wedge);
+
+  group.add(cliff);
+}
+
+function addPillar(group, textures, x, y, z, width, height, depth, snowCap = false) {
+  const pillar = new THREE.Group();
+  pillar.position.set(x, y, z);
+
+  const core = new THREE.Mesh(
+    new THREE.CylinderGeometry(width * 0.75, width, height, 6, 1),
+    new THREE.MeshStandardMaterial({
+      color: 0x636f7a,
+      map: textures.rock,
+      roughness: 0.97,
+      metalness: 0.02
+    })
+  );
+  core.castShadow = true;
+  core.receiveShadow = true;
+  pillar.add(core);
+
+  if (snowCap) {
+    const top = new THREE.Mesh(
+      new THREE.ConeGeometry(width * 0.42, height * 0.24, 6, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0xf2f8ff,
+        map: textures.snow,
+        roughness: 0.82,
+        metalness: 0.02
+      })
+    );
+    top.position.y = height * 0.5;
+    pillar.add(top);
+  }
+
+  group.add(pillar);
+}
+
+function addIsland(group, textures, x, y, z, width, depth) {
+  const island = new THREE.Group();
+  island.position.set(x, y, z);
+
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(width * 0.9, width * 1.2, 8, 10),
+    new THREE.MeshStandardMaterial({
+      color: 0x5d584f,
+      map: textures.dirt,
+      roughness: 0.96,
+      metalness: 0.01
+    })
+  );
+  body.castShadow = true;
+  body.receiveShadow = true;
+  island.add(body);
+
+  const cap = new THREE.Mesh(
+    new THREE.CylinderGeometry(width, width * 1.12, 1.4, 10),
+    new THREE.MeshStandardMaterial({
+      color: 0x48525c,
+      map: textures.stone,
+      roughness: 0.94,
+      metalness: 0.02
+    })
+  );
+  cap.position.y = 4.6;
+  cap.castShadow = true;
+  cap.receiveShadow = true;
+  island.add(cap);
+
+  const trees = Math.max(4, Math.round(width / 4));
+  for (let i = 0; i < trees; i += 1) {
+    const angle = (i / trees) * Math.PI * 2;
+    const tree = new THREE.Group();
+    tree.position.set(Math.cos(angle) * width * 0.5, 5.2, Math.sin(angle) * depth * 0.45);
+
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.3, 1.8, 6),
+      new THREE.MeshStandardMaterial({ color: 0x5b3d26, map: textures.dirt, roughness: 0.98, metalness: 0.01 })
+    );
+    trunk.castShadow = true;
+    tree.add(trunk);
+
+    const foliage = new THREE.Mesh(
+      new THREE.ConeGeometry(0.95, 2.6, 7, 1),
+      new THREE.MeshStandardMaterial({ color: 0x3e6a4c, map: textures.rock, roughness: 0.94, metalness: 0.01 })
+    );
+    foliage.position.y = 1.8;
+    foliage.castShadow = true;
+    tree.add(foliage);
+
+    island.add(tree);
+  }
+
+  group.add(island);
+}
+
+function addCloud(group, textures, x, y, z, scale = 3) {
+  const cloud = new THREE.Group();
+  cloud.position.set(x, y, z);
+  cloud.rotation.y = Math.random() * Math.PI * 2;
+  cloud.frustumCulled = false;
+
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    map: textures.cloud,
+    transparent: true,
+    opacity: 0.94,
+    roughness: 1,
+    metalness: 0,
+    depthWrite: false,
+    fog: false
+  });
+
+  const puffs = [
+    [-1.2, 0, 0, 1.0],
+    [-0.4, 0.3, 0.1, 1.25],
+    [0.55, 0.15, -0.2, 1.4],
+    [1.15, 0.05, 0.2, 0.95],
+    [0.15, -0.12, 0.45, 1.05]
+  ];
+
+  for (const [px, py, pz, size] of puffs) {
+    const puff = new THREE.Mesh(new THREE.SphereGeometry(scale * size * 0.6, 12, 10), material.clone());
+    puff.position.set(px * scale, py * scale * 0.4, pz * scale * 0.5);
+    puff.castShadow = false;
+    puff.frustumCulled = false;
+    cloud.add(puff);
+  }
+
+  group.add(cloud);
+}
+
+function addRingRocks(group, textures, centerX, centerZ, radius, rockCount) {
+  for (let i = 0; i < rockCount; i += 1) {
+    const angle = (i / rockCount) * Math.PI * 2;
+    const x = centerX + Math.cos(angle) * radius;
+    const z = centerZ + Math.sin(angle) * radius;
+    const rock = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(1.8 + (i % 3) * 0.45, 0),
+      new THREE.MeshStandardMaterial({
+        color: 0x55616b,
+        map: textures.rock,
+        roughness: 0.97,
+        metalness: 0.01,
+        emissive: 0x080b10,
+        emissiveIntensity: 0.02
+      })
+    );
+    rock.position.set(x, -4.5 + Math.sin(angle * 2) * 0.5, z);
+    rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    rock.scale.setScalar(1.8 + (i % 2) * 0.5);
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+    group.add(rock);
+  }
+}
+
+function getDefinitionBounds(definition) {
+  const points = [];
+
+  for (const platform of definition.platforms || []) {
+    points.push(
+      [platform.x - platform.sx / 2, platform.z - platform.sz / 2],
+      [platform.x + platform.sx / 2, platform.z + platform.sz / 2]
+    );
+  }
+
+  for (const portal of definition.portals || []) {
+    const position = portal.position || portal.ring?.position;
+    if (position) points.push([position.x, position.z]);
+  }
+
+  if (definition.goal) {
+    points.push([definition.goal.x, definition.goal.z]);
+  }
+
+  if (points.length === 0) {
+    return { minX: -20, maxX: 20, minZ: -20, maxZ: 20 };
+  }
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+
+  for (const [x, z] of points) {
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minZ = Math.min(minZ, z);
+    maxZ = Math.max(maxZ, z);
+  }
+
+  return { minX, maxX, minZ, maxZ };
 }
 
 function tintColor(hex, amount) {

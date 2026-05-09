@@ -10,6 +10,29 @@ export function createTitleScreen({ onStart, onStartMinigame, onOpenControls }) 
   });
   document.body.appendChild(root);
 
+  // Animated background layer (subtle motion)
+  const bgAnim = document.createElement("div");
+  bgAnim.style.position = "absolute";
+  bgAnim.style.inset = "0";
+  bgAnim.style.pointerEvents = "none";
+  bgAnim.style.zIndex = "48";
+  bgAnim.style.transition = "opacity 300ms ease";
+  bgAnim.style.mixBlendMode = "overlay";
+  bgAnim.style.opacity = "0.9";
+  root.appendChild(bgAnim);
+
+  let _animId = null;
+  let _start = performance.now();
+  function _tick(now) {
+    const t = (now - _start) * 0.00012; // slow motion
+    const x = Math.cos(t * 0.6) * 40 + 50;
+    const y = Math.sin(t * 0.4) * 30 + 50;
+    // moving radial gradients to give subtle parallax
+    bgAnim.style.background = `radial-gradient(circle at ${x}% ${y}%, rgba(78,120,180,0.08), transparent 12%), radial-gradient(circle at ${100 - x}% ${100 - y}%, rgba(180,120,90,0.04), transparent 18%)`;
+    _animId = requestAnimationFrame(_tick);
+  }
+  _animId = requestAnimationFrame(_tick);
+
   let destroyed = false;
   let started = false;
 
@@ -132,6 +155,7 @@ export function createTitleScreen({ onStart, onStartMinigame, onOpenControls }) 
     if (destroyed) return;
     destroyed = true;
     root.remove();
+    if (_animId) cancelAnimationFrame(_animId);
   }
 
   return { destroy };

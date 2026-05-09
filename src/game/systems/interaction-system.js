@@ -103,6 +103,8 @@ export function resolveSwordSlash(player, enemies, options = {}) {
   const forwardZ = options.forwardZ ?? 1;
   const forwardDotThreshold = options.forwardDotThreshold ?? 0.15;
   const fullCircle = options.fullCircle ?? false;
+  const sphere = options.sphere ?? false;
+  const centerYOffset = options.centerYOffset ?? 1.1; // matches visual offset used by emitSlash
 
   let hits = 0;
   let defeated = 0;
@@ -118,13 +120,22 @@ export function resolveSwordSlash(player, enemies, options = {}) {
 
     const dx = enemy.mesh.position.x - player.position.x;
     const dz = enemy.mesh.position.z - player.position.z;
-    const distance = Math.hypot(dx, dz);
     const enemyRadius = enemy.radius || 0.6;
-    if (distance > radius + enemyRadius) continue;
 
-    if (!fullCircle && distance > 0.001) {
-      const dot = (dx / distance) * nx + (dz / distance) * nz;
-      if (dot < forwardDotThreshold) continue;
+    if (sphere) {
+      // Use full 3D distance from the visual center of the spherical slash
+      const dy = enemy.mesh.position.y - (player.position.y + centerYOffset);
+      const dist3 = Math.hypot(dx, dy, dz);
+      if (dist3 > radius + enemyRadius) continue;
+      // spherical slash ignores facing
+    } else {
+      const distance = Math.hypot(dx, dz);
+      if (distance > radius + enemyRadius) continue;
+
+      if (!fullCircle && distance > 0.001) {
+        const dot = (dx / distance) * nx + (dz / distance) * nz;
+        if (dot < forwardDotThreshold) continue;
+      }
     }
 
     enemy.health = Math.max(0, (enemy.health ?? 1) - damage);

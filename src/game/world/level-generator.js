@@ -233,7 +233,7 @@ function createBossStage(world, worldIndex, stageIndex, worldStageCount) {
   };
 }
 
-export const MINIGAME_MAX_LEVEL = 10;
+export const MINIGAME_MAX_LEVEL = 11;
 
 export function createSwordMinigameDefinition(level = 1) {
   const clampedLevel = Math.max(1, Math.min(MINIGAME_MAX_LEVEL, Math.floor(level)));
@@ -256,7 +256,7 @@ export function createSwordMinigameDefinition(level = 1) {
     bombs,
     enemies,
     goal: null,
-    isBossStage: clampedLevel % 5 === 0,
+    isBossStage: (clampedLevel % 5 === 0) || (clampedLevel === MINIGAME_MAX_LEVEL),
     stageType: "minigame",
     minigameLevel: clampedLevel,
     minigameMaxLevel: MINIGAME_MAX_LEVEL
@@ -321,6 +321,34 @@ function buildMinigameLayout(level) {
 }
 
 function buildMinigameEnemies(level, rng) {
+  // Special final level: only boss goblins (50) chasing fast.
+  if (level === MINIGAME_MAX_LEVEL) {
+    const bosses = [];
+    const count = 50;
+    for (let i = 0; i < count; i += 1) {
+      const angle = (i / count) * Math.PI * 2 + rng() * 0.4;
+      // spread across rings to avoid perfect overlap
+      const ring = i % 5;
+      const radius = 12 + ring * 6 + Math.floor(i / 10) * 4 + rng() * 3;
+      bosses.push({
+        x: Math.cos(angle) * radius,
+        y: 1.2 + (ring * 0.2),
+        z: Math.sin(angle) * radius,
+        radius: 1.0 + rng() * 0.2,
+        health: 3 + Math.round(rng() * 2),
+        isGiant: true,
+        phase: rng() * Math.PI * 2,
+        driftX: 0.05 + rng() * 0.06,
+        driftZ: 0.05 + rng() * 0.06,
+        driftY: 0.02 + rng() * 0.02,
+        baseSpeed: 3.6 + rng() * 1.4,
+        flyHeight: 0.6 + rng() * 0.3,
+        chaseWeight: 1.2
+      });
+    }
+    return bosses;
+  }
+
   const enemies = [];
   const ringCount = 2 + Math.floor(level / 3);
   const baseCount = 8 + level * 2;

@@ -1148,7 +1148,8 @@ export function startGame(uiElement, options = {}) {
             forwardX: direction.x,
             forwardZ: direction.z,
             forwardDotThreshold: -0.15,
-            fullCircle: true
+            fullCircle: true,
+            sphere: true
           });
           minigameState.slashCooldownUntil = elapsed + 0.22;
           minigameState.slashAnimUntil = elapsed + 0.19;
@@ -1238,7 +1239,8 @@ export function startGame(uiElement, options = {}) {
               forwardX: direction.x,
               forwardZ: direction.z,
               forwardDotThreshold: -0.15,
-              fullCircle: true
+              fullCircle: true,
+              sphere: true
             });
             minigameState.slashCooldownUntil = elapsed + 0.22;
             minigameState.slashAnimUntil = elapsed + 0.19;
@@ -1268,7 +1270,8 @@ export function startGame(uiElement, options = {}) {
               forwardX: direction.x,
               forwardZ: direction.z,
               forwardDotThreshold: -0.15,
-              fullCircle: true
+              fullCircle: true,
+              sphere: true
             });
             minigameState.slashCooldownUntil = elapsed + 0.22;
             minigameState.slashAnimUntil = elapsed + 0.19;
@@ -1304,7 +1307,8 @@ export function startGame(uiElement, options = {}) {
           damage: 1,
           forwardX: direction.x,
           forwardZ: direction.z,
-          fullCircle: true
+          fullCircle: true,
+          sphere: true
         });
         globalSlashCooldownUntil = elapsed + 0.26;
         audio.playSfx("enemy", slashResult.hits > 0 ? 0.68 : 0.42);

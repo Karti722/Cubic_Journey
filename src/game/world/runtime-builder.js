@@ -3,14 +3,14 @@ import { THREE } from "../../engine/three.js";
 export function buildWorldRuntime(scene, definition, visuals) {
   const { textures } = visuals;
   const arenaBounds = getDefinitionBounds(definition);
-  const skyGradient = definition.skyGradient || null;
+  const skyGradient = (definition.stageType === "minigame") ? definition.skyGradient : null;
   const backgroundColor = skyGradient?.top ?? definition.skyColor;
   const fogColor = skyGradient?.fog ?? definition.skyColor;
   scene.background = new THREE.Color(backgroundColor);
   scene.fog = new THREE.Fog(fogColor, 26, 180);
 
-  // Apply minigame-specific lighting if configured
-  if (definition.lighting) {
+  // Apply minigame-specific lighting only for minigame stages, otherwise reset to defaults
+  if (definition.stageType === "minigame" && definition.lighting) {
     const lighting = definition.lighting;
     // Update existing lights in scene
     for (const light of scene.children.filter(c => c.isLight)) {
@@ -30,6 +30,26 @@ export function buildWorldRuntime(scene, definition, visuals) {
       } else if (light.isAmbientLight) {
         light.color.setHex(lighting.ambientColor);
         light.intensity = lighting.ambientIntensity;
+      }
+    }
+  } else {
+    // Reset to default bright campaign lighting for non-minigame stages
+    for (const light of scene.children.filter(c => c.isLight)) {
+      if (light.isHemisphereLight) {
+        light.color.setHex(0xcfe8ff);
+        light.groundColor.setHex(0x0e1220);
+        light.intensity = 6.0;
+      } else if (light.isDirectionalLight) {
+        if (!light._isFill) {
+          light.color.setHex(0xffffff);
+          light.intensity = 18.0;
+        } else {
+          light.color.setHex(0x9fdfff);
+          light.intensity = 3.6;
+        }
+      } else if (light.isAmbientLight) {
+        light.color.setHex(0x101218);
+        light.intensity = 2.1;
       }
     }
   }

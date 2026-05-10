@@ -37,6 +37,7 @@ export function createRenderContext() {
 
   // Subtle fill light to soften shadows
   const fill = new THREE.DirectionalLight(0x9fdfff, 3.6);
+  fill._isFill = true; // Mark as fill light for dynamic updates
   fill.position.set(-28, 22, -30);
   scene.add(fill);
 

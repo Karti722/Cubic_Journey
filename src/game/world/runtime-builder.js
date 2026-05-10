@@ -3,13 +3,41 @@ import { THREE } from "../../engine/three.js";
 export function buildWorldRuntime(scene, definition, visuals) {
   const { textures } = visuals;
   const arenaBounds = getDefinitionBounds(definition);
-  scene.background = new THREE.Color(definition.skyColor);
-  scene.fog = new THREE.Fog(definition.skyColor, 26, 180);
+  const skyGradient = definition.skyGradient || null;
+  const backgroundColor = skyGradient?.top ?? definition.skyColor;
+  const fogColor = skyGradient?.fog ?? definition.skyColor;
+  scene.background = new THREE.Color(backgroundColor);
+  scene.fog = new THREE.Fog(fogColor, 26, 180);
+
+  // Apply minigame-specific lighting if configured
+  if (definition.lighting) {
+    const lighting = definition.lighting;
+    // Update existing lights in scene
+    for (const light of scene.children.filter(c => c.isLight)) {
+      if (light.isHemisphereLight) {
+        light.color.setHex(lighting.hemiSky);
+        light.groundColor.setHex(lighting.hemiGround);
+        light.intensity = lighting.hemiIntensity;
+      } else if (light.isDirectionalLight) {
+        // First directional light is sun
+        if (!light._isFill) {
+          light.color.setHex(lighting.sunColor);
+          light.intensity = lighting.sunIntensity;
+        } else {
+          light.color.setHex(lighting.fillColor);
+          light.intensity = lighting.fillIntensity;
+        }
+      } else if (light.isAmbientLight) {
+        light.color.setHex(lighting.ambientColor);
+        light.intensity = lighting.ambientIntensity;
+      }
+    }
+  }
 
   const root = new THREE.Group();
   scene.add(root);
 
-  const atmosphere = buildAtmosphere(definition.skyColor, textures);
+  const atmosphere = buildAtmosphere(definition.skyColor, textures, skyGradient);
   root.add(atmosphere.group);
 
   const scenery = buildScenery(definition, textures);
@@ -540,13 +568,45 @@ function buildScenery(definition, textures) {
   return { group };
 }
 
-function buildAtmosphere(skyColor, textures) {
+function buildAtmosphere(skyColor, textures, skyGradient = null) {
   const group = new THREE.Group();
 
-  const skyDome = new THREE.Mesh(
-    new THREE.SphereGeometry(900, 28, 18),
-    new THREE.MeshBasicMaterial({ color: tintColor(skyColor, 0.08), map: textures.sky, side: THREE.BackSide, transparent: true, opacity: 0.98 })
-  );
+  const skyDomeMaterial = skyGradient
+    ? new THREE.ShaderMaterial({
+      uniforms: {
+        topColor: { value: new THREE.Color(skyGradient.top ?? tintColor(skyColor, 0.12)) },
+        horizonColor: { value: new THREE.Color(skyGradient.horizon ?? tintColor(skyColor, 0.24)) },
+        bottomColor: { value: new THREE.Color(skyGradient.bottom ?? tintColor(skyColor, -0.15)) }
+      },
+      vertexShader: `
+        varying vec3 vWorldPosition;
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 topColor;
+        uniform vec3 horizonColor;
+        uniform vec3 bottomColor;
+        varying vec3 vWorldPosition;
+
+        void main() {
+          float h = clamp(normalize(vWorldPosition).y * 0.5 + 0.5, 0.0, 1.0);
+          vec3 lower = mix(bottomColor, horizonColor, smoothstep(0.0, 0.58, h));
+          vec3 upper = mix(horizonColor, topColor, smoothstep(0.42, 1.0, h));
+          vec3 color = mix(lower, upper, smoothstep(0.38, 0.62, h));
+          gl_FragColor = vec4(color, 0.98);
+        }
+      `,
+      side: THREE.BackSide,
+      transparent: true,
+      depthWrite: false
+    })
+    : new THREE.MeshBasicMaterial({ color: tintColor(skyColor, 0.08), map: textures.sky, side: THREE.BackSide, transparent: true, opacity: 0.98 });
+
+  const skyDome = new THREE.Mesh(new THREE.SphereGeometry(900, 28, 18), skyDomeMaterial);
   group.add(skyDome);
 
   const starsGeometry = new THREE.BufferGeometry();

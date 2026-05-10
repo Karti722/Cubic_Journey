@@ -246,7 +246,24 @@ export function createSwordMinigameDefinition(level = 1) {
   return {
     type: "minigame",
     name: `Goblin Wildlands L${clampedLevel}`,
-    skyColor: 0x7eb4df,
+    skyColor: 0x7a0000,
+    skyGradient: {
+      top: 0x4a1a1a,
+      horizon: 0xc24922,
+      bottom: 0x2d0a0a,
+      fog: 0x7a2020
+    },
+    lighting: {
+      hemiSky: 0xd46a3a,
+      hemiGround: 0x1a0a0a,
+      hemiIntensity: 5.2,
+      sunColor: 0xff8844,
+      sunIntensity: 16.0,
+      fillColor: 0xc24922,
+      fillIntensity: 2.8,
+      ambientColor: 0x3a1515,
+      ambientIntensity: 1.8
+    },
     spawn: layout.spawn,
     platforms: layout.platforms,
     portals: [],

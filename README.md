@@ -244,7 +244,7 @@ Keep these files in sync when making large changes: `game-config.js`, `campaign-
 
 ### Questions?
 
-Refer to the repository map above to understand what each file does, then modify it to match your vision. The game is yours to make—customize, extend, and share!
+Refer to the repository map above to understand what each file does, then modify it to match your vision. The game is yours to make—customize, extend, and share! I won't answer any questions since I lost passion for this and I'm done.
 
 ## Glossary
 

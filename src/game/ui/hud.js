@@ -280,6 +280,41 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
       if (model.finalWin) rows.push(makeAlert("Campaign complete!", true));
     } else {
       rows.push(makeRow("Objective", model.isBossStage ? "Boss stage" : "Reach the goal cube"));
+      
+      // Add health bar for minigame
+      if (typeof model.playerHealth !== "undefined") {
+        const healthPercent = Math.max(0, Math.min(100, (model.playerHealth / (model.playerMaxHealth || 100)) * 100));
+        const healthBar = document.createElement("div");
+        healthBar.style.display = "flex";
+        healthBar.style.flexDirection = "column";
+        healthBar.style.gap = "4px";
+        
+        const healthLabel = document.createElement("div");
+        healthLabel.style.fontSize = "0.75rem";
+        healthLabel.style.fontWeight = "700";
+        healthLabel.style.color = "rgba(255,255,255,0.7)";
+        healthLabel.style.letterSpacing = "0.04em";
+        healthLabel.textContent = `Health: ${Math.round(model.playerHealth)}/${model.playerMaxHealth}`;
+        healthBar.appendChild(healthLabel);
+        
+        const healthBarContainer = document.createElement("div");
+        healthBarContainer.style.height = "10px";
+        healthBarContainer.style.background = "rgba(0,0,0,0.5)";
+        healthBarContainer.style.borderRadius = "2px";
+        healthBarContainer.style.overflow = "hidden";
+        healthBarContainer.style.border = "1px solid rgba(255,80,80,0.3)";
+        
+        const healthBarFill = document.createElement("div");
+        healthBarFill.style.height = "100%";
+        healthBarFill.style.width = `${healthPercent}%`;
+        healthBarFill.style.background = healthPercent > 30 ? "linear-gradient(90deg, rgba(76, 255, 130, 0.8), rgba(100, 255, 150, 0.8))" : "linear-gradient(90deg, rgba(255, 100, 100, 0.8), rgba(255, 50, 50, 0.8))";
+        healthBarFill.style.transition = "width 150ms ease";
+        healthBarContainer.appendChild(healthBarFill);
+        healthBar.appendChild(healthBarContainer);
+        
+        rows.push(healthBar);
+      }
+      
       if (model.skipPrompt) rows.push(makeAlert(model.skipPrompt));
     }
 
@@ -377,18 +412,21 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
     updateBossBanner(model);
 
     // Charge-ready indicator (show only during minigame when charged explosion is available)
-    if (model.chargeReady) {
+    const slashBindingLabel = model.slashBindingLabel || "slash button";
+    if (typeof model.chargeReady === "boolean") {
       chargeChip.style.display = "inline-flex";
-      chargeChip.style.background = "rgba(255, 59, 59, 0.94)";
       chargeChip.style.border = "1px solid rgba(255, 59, 59, 0.28)";
       chargeChip.style.color = "white";
-      chargeChip.textContent = `Hold slash button to Charge Explosion`;
+
+      if (model.chargeReady) {
+        chargeChip.style.background = "rgba(255, 59, 59, 0.94)";
+        chargeChip.textContent = `Hold ${slashBindingLabel} to Charge Explosion`;
+      } else {
+        chargeChip.style.background = "rgba(15, 14, 14, 0.94)";
+        chargeChip.textContent = `Spam ${slashBindingLabel} to hit goblins around you`;
+      }
     } else {
-      chargeChip.style.display = "inline-flex";
-      chargeChip.style.background = "rgba(15, 14, 14, 0.94)";
-      chargeChip.style.border = "1px solid rgba(255, 59, 59, 0.28)";
-      chargeChip.style.color = "white";
-      chargeChip.textContent = `Spam slash button to hit goblins around you`;
+      chargeChip.style.display = "none";
     }
 
   }

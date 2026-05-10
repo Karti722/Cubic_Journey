@@ -1,6 +1,6 @@
 import { ensureUiTheme, styleButton, styleOverlayRoot, stylePanel } from "./ui-theme.js";
 
-export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld, onReturnTitle, onResetSave, onToggleMusic, onOpenControls, onOpenShop, onOpenInfo }) {
+export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld, onReturnTitle, onResetSave, onToggleMusic, onOpenControls, onOpenShop, onOpenInfo, onEnterMinigame }) {
   ensureUiTheme();
 
   const root = document.createElement("div");
@@ -44,6 +44,9 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
     left.appendChild(actions);
 
     addRailButton(actions, "Resume", onResume, true);
+    if (!model.minigameActive) {
+      addRailButton(actions, "Play Slash Minigame", () => typeof onEnterMinigame === "function" && onEnterMinigame());
+    }
     addRailButton(actions, model.musicEnabled ? "Music On" : "Music Off", onToggleMusic);
     addRailButton(actions, "Controls", () => typeof onOpenControls === "function" && onOpenControls());
     addRailButton(actions, "Shop", () => typeof onOpenShop === "function" && onOpenShop());

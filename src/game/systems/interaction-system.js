@@ -160,11 +160,19 @@ export function resolveBombContacts(player, bombs, elapsed, options = {}) {
   const touchPadding = options.touchPadding ?? 0.65;
 
   let exploded = 0;
+  const impacts = [];
   for (const bomb of bombs || []) {
     if (bomb.exploded || elapsed < bomb.cooldownUntil || !bomb.shell.visible) continue;
 
     const distance = player.position.distanceTo(bomb.shell.position);
     if (distance > bomb.radius + touchPadding) continue;
+
+    impacts.push({
+      x: bomb.shell.position.x,
+      z: bomb.shell.position.z,
+      velX: bomb.velX ?? 0,
+      velZ: bomb.velZ ?? 0
+    });
 
     bomb.exploded = true;
     bomb.explodedUntil = elapsed + 0.26;
@@ -174,5 +182,5 @@ export function resolveBombContacts(player, bombs, elapsed, options = {}) {
     exploded += 1;
   }
 
-  return { exploded };
+  return { exploded, impacts };
 }

@@ -202,26 +202,49 @@ flowchart TD
 7. The movement, physics, and interaction systems run every frame to update the player and world.
 8. The HUD and overlay menus read the current model data and keep the UI in sync with gameplay.
 
-## Contributor Workflow
+## Making Your Own Game
 
-When adding a new gameplay feature, start by finding the file that owns the state, not the menu or visual wrapper.
+Cubic Journey is designed to be forked and customized. The modular architecture makes it easy to modify game content, mechanics, and story while keeping the runtime stable.
 
-- New movement or combat rule: update `src/game/systems/*.js` first, then wire the result into `src/app/game.js` and the relevant UI.
-- New stage or world content: update `src/game/config/game-config.js`, `src/game/world/level-generator.js`, and `src/game/campaign/campaign-state.js` together so progression and content stay consistent.
-- New runtime object or enemy behavior: add it in `src/game/world/runtime-builder.js`, then make sure `src/game/systems/interaction-system.js` or `src/app/game.js` can react to it.
-- New overlay or HUD element: add it under `src/game/ui/`, then feed it data from `src/app/game.js`.
-- New persistent setting: define its defaults in the relevant state module, then wire load and save behavior through `src/game/persistence/save-store.js` or `src/game/input/control-settings.js`.
-- New sound or music cue: add the asset under `src/game/audio/` and register it in `src/game/audio/audio-engine.js`.
+### Getting Started with a Fork
 
-A good rule is to change data definitions first, runtime behavior second, and UI last. That keeps state, gameplay, and presentation from drifting apart.
+1. Download or clone this repository.
+2. Copy the entire project folder and rename it to your game's name.
+3. Follow the "Run Locally" section above to start developing.
 
-Concrete examples:
+### What You Can Change
 
-- Add a new world: define it in `src/game/config/game-config.js`, add the narrative line in `src/game/story/story-data.js`, update unlock/progression behavior in `src/game/campaign/campaign-state.js`, and teach `src/game/world/level-generator.js` how many stages and which boss it should generate.
-- Add a new skill: register the default owned state in `src/game/skills/skill-data.js`, persist it through the campaign state, expose the effect in `src/app/game.js` or the relevant system module, and surface it in the shop UI so players can buy it.
-- Add a new HUD element: extend `src/app/game.js` to include the new model field, then render it in `src/game/ui/hud.js` so the display logic stays separate from gameplay logic.
-- Add a new sound effect: place the asset in `src/game/audio/sfx/`, add it to the sound map in `src/game/audio/audio-engine.js`, and call `audio.playSfx(...)` from the gameplay code that owns the event.
-- Add a new overlay: build the menu in `src/game/ui/`, register it in `src/app/game.js`, and pass in only the state and callbacks it needs.
+The repository map above shows every file and what it does. Here are the most common starting points:
+
+- **Story & Progression**: Edit `src/game/config/game-config.js` to define your worlds, stages, and boss encounters. Update `src/game/story/story-data.js` with your narrative.
+- **World Layout & Visuals**: Modify `src/game/world/level-generator.js` to change terrain, platforms, and atmosphere. Adjust colors and materials in `src/game/world/runtime-builder.js`.
+- **Gameplay Mechanics**: Edit the systems in `src/game/systems/` to change movement speed, physics, or combat rules. Tune constants in `src/app/game.js` to adjust game feel.
+- **UI & Overlays**: Customize menus and HUD in `src/game/ui/` to match your game's style and story.
+- **Audio & Effects**: Replace or add sounds in `src/game/audio/music/` and `src/game/audio/sfx/`, then register them in `src/game/audio/audio-engine.js`.
+- **Player Skills & Items**: Expand `src/game/skills/` or add new item types in the persistence and campaign state modules.
+
+### Deployment
+
+Once your game is ready:
+
+1. Replace the placeholder assets (music, sound effects, textures) with your own.
+2. Update `index.html` to set your game's title and meta tags.
+3. Deploy the entire folder to any static host (Netlify, Vercel, GitHub Pages, etc.). The project is static HTML/CSS/JS with no build step required.
+4. Update this README with your game's description, story, and credits.
+
+### Architecture Notes
+
+The codebase is intentionally split into small files so each piece is easy to find and modify without affecting others. The general flow is:
+
+- Data first: Define your game in `game-config.js` and `story-data.js`.
+- Runtime second: Let `level-generator.js` and `runtime-builder.js` turn those definitions into live scenes.
+- Gameplay last: Wire the systems and UI to react to player input and world state.
+
+Keep these files in sync when making large changes: `game-config.js`, `campaign-state.js`, `level-generator.js`, and `runtime-builder.js`. They all work together to define progression and content.
+
+### Questions?
+
+Refer to the repository map above to understand what each file does, then modify it to match your vision. The game is yours to make—customize, extend, and share!
 
 ## Glossary
 
@@ -232,9 +255,4 @@ Concrete examples:
 - Action effects: Temporary combat VFX such as slash arcs, particles, and explosions.
 - HUD: The on-screen status interface for world, stage, objective, and prompt information.
 
-## Notes For Future Contributors
 
-- Keep `game-config.js`, `campaign-state.js`, `level-generator.js`, and `runtime-builder.js` in sync when changing stage counts, world order, or unlock rules.
-- If you add new files, document them here so the repository map stays accurate for future open-source readers.
-- If you add automated CI later, place it in `.github/workflows/` and describe it here.
-- The project is intentionally bundle-free and static on purpose, so avoid introducing a build step unless there is a strong reason to do so.

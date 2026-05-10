@@ -116,10 +116,22 @@ export function startGame(uiElement, options = {}) {
     // whether we've emitted an immediate slash for the current key press
     slashFiredThisPress: false,
     // Whether we've already handled advancing after a win
-    winHandled: false
+    winHandled: false,
+    // Player health system
+    playerMaxHealth: 100,
+    playerHealth: 100,
+    hitReactUntil: 0,
+    hitReactDuration: 0.24,
+    hitReactDirX: 0,
+    hitReactDirZ: 0,
+    knockbackVelX: 0,
+    knockbackVelZ: 0,
+    knockbackUntil: 0,
+    actionDisabledUntil: 0,
+    gameOverHandled: false
   };
   // Regular (non-charged) sphere slash radius and visual scale (keeps VFX and hit radius identical)
-  const REGULAR_SLASH_RADIUS = 2.25;
+  const REGULAR_SLASH_RADIUS = 2.5;
 
 
 
@@ -216,6 +228,8 @@ export function startGame(uiElement, options = {}) {
     minigameState.winHandled = false;
     minigameState.chargeHeldSince = null;
     minigameState.chargeCooldownUntil = 0;
+    minigameState.playerHealth = minigameState.playerMaxHealth;
+    minigameState.gameOverHandled = false;
     // show a level banner then load the level after a short intro delay to soften transitions
     const introMs = 700;
     try {
@@ -352,12 +366,77 @@ export function startGame(uiElement, options = {}) {
     }, 4200);
   }
 
+  function showMinigameGameOver() {
+    paused = true;
+    audio.pauseMusic();
+    audio.playSfx("damage", 0.95);
+    loadingScreen.hide();
+
+    const gameOverRoot = document.createElement("div");
+    gameOverRoot.style.position = "fixed";
+    gameOverRoot.style.inset = "0";
+    gameOverRoot.style.zIndex = "120";
+    gameOverRoot.style.display = "grid";
+    gameOverRoot.style.placeItems = "center";
+    gameOverRoot.style.background = "radial-gradient(circle at 50% 40%, rgba(20, 6, 10, 0.84), rgba(0, 0, 0, 0.98))";
+    gameOverRoot.style.backdropFilter = "blur(6px)";
+    gameOverRoot.style.color = "white";
+    gameOverRoot.style.pointerEvents = "auto";
+
+    gameOverRoot.innerHTML = `
+      <div style="width:min(720px, calc(100vw - 32px)); padding: 28px 24px; text-align:center; background: rgba(20, 10, 16, 0.96); border: 2px solid rgba(255, 80, 120, 0.4); border-radius: 18px; box-shadow: 0 28px 70px rgba(0,0,0,0.65), 0 0 40px rgba(255, 80, 120, 0.2);">
+        <div style="font-size: 1rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,150,150,0.8); margin-bottom: 10px;">Health Depleted</div>
+        <div style="font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: 0.04em; margin-bottom: 10px; color: #ff5a7e;">Game Over</div>
+        <div style="font-size: 1rem; line-height: 1.55; color: rgba(255,255,255,0.84); margin-bottom: 24px;">You were defeated by the goblin bombs. Returning to the hub...</div>
+      </div>
+    `;
+    document.body.appendChild(gameOverRoot);
+
+    setTimeout(() => {
+      // return to hub / title screen
+      location.reload();
+    }, 4000);
+  }
+
   function triggerDamageFeedback(elapsed) {
     damageCooldownUntil = elapsed + 0.85;
     audio.playSfx("damage", 0.82);
     if (player.bodyMaterial?.emissive) {
       player.bodyMaterial.emissive.setHex(0xff3311);
     }
+  }
+
+  function triggerMinigameHitReaction(elapsed, sourceX, sourceZ, horizontalForce = 1800, upwardForce = 0.5) {
+    // Launch in opposite direction of player's facing
+    const dirX = -Math.sin(player.rotation.y);
+    const dirZ = -Math.cos(player.rotation.y);
+
+    minigameState.knockbackVelX = dirX * horizontalForce;
+    minigameState.knockbackUntil = elapsed + 0.1; // Knockback lasts 0.1 seconds
+
+    velocity.y = upwardForce;
+
+    minigameState.hitReactUntil = elapsed + minigameState.hitReactDuration;
+    minigameState.hitReactDirX = dirX;
+    minigameState.hitReactDirZ = dirZ;
+    ability.dashAvailable = false;
+    grounded = false;
+  }
+
+  function getNearestMinigameEnemySource() {
+    let closest = null;
+    let closestDistance = Infinity;
+
+    for (const enemy of runtime?.enemies || []) {
+      if (enemy.defeated || !enemy.mesh?.visible) continue;
+      const distance = player.position.distanceTo(enemy.mesh.position);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closest = enemy.mesh.position;
+      }
+    }
+
+    return closest ? { x: closest.x, z: closest.z } : null;
   }
 
   function cancelMinigameCharge() {
@@ -569,6 +648,13 @@ export function startGame(uiElement, options = {}) {
       pauseMenu.close();
       paused = true;
       openCampaignInfo(true);
+    },
+    onEnterMinigame: () => {
+      audio.playSfx("portal", 0.6);
+      paused = false;
+      pauseMenu.close();
+      enterMinigame();
+      if (musicEnabled) audio.resumeMusic();
     }
   });
 
@@ -580,6 +666,7 @@ export function startGame(uiElement, options = {}) {
 
     return {
       mode: campaign.state.mode,
+      minigameActive: minigameState.active,
       worldName: GAME_CONFIG.campaignWorlds[campaign.state.worldIndex]?.name || "World Hub",
       storyBlurb: STORY.premise,
       worldBlurb: campaign.state.mode === "hub"
@@ -612,6 +699,24 @@ export function startGame(uiElement, options = {}) {
     };
   }
 
+  function getPrimarySlashBindingLabel() {
+    const slashBindings = controls.getBindings?.()?.slash;
+    const code = Array.isArray(slashBindings) && slashBindings.length > 0 ? slashBindings[0] : "KeyF";
+
+    if (code.startsWith("Key") && code.length === 4) return code.slice(3);
+    if (code.startsWith("Digit") && code.length === 6) return code.slice(5);
+    if (code.startsWith("Numpad")) return `Numpad ${code.slice(6)}`;
+    if (code === "Space") return "Space";
+    if (code === "ShiftLeft" || code === "ShiftRight") return "Shift";
+    if (code === "ControlLeft" || code === "ControlRight") return "Ctrl";
+    if (code === "AltLeft" || code === "AltRight") return "Alt";
+    if (code === "Escape") return "Esc";
+    if (code === "Backquote") return "`";
+    if (code.startsWith("Arrow")) return `${code.slice(5)} Arrow`;
+
+    return code;
+  }
+
   function buildHudModel() {
     if (minigameState.active) {
       return {
@@ -626,6 +731,9 @@ export function startGame(uiElement, options = {}) {
         keyCubes: campaign.state.keyCubes,
         currency: campaign.state.currency,
         skillCount: countOwnedSkills(campaign.state.skills),
+        slashBindingLabel: getPrimarySlashBindingLabel(),
+        playerHealth: minigameState.playerHealth,
+        playerMaxHealth: minigameState.playerMaxHealth,
         // whether the charged explosion is currently available (not on cooldown)
         chargeReady: (performance.now() - gameStartTimeMs) / 1000 >= (minigameState.chargeCooldownUntil || 0) && !minigameState.won,
         // show a friendly level-clear message but do not instruct pressing Enter (auto-advance)
@@ -1097,15 +1205,24 @@ export function startGame(uiElement, options = {}) {
       return;
     }
 
-    if (ability.dashTimeLeft <= 0) {
+    // Disable player input actions for a short window after taking damage
+    const actionBlocked = minigameState.active && elapsed < (minigameState.actionDisabledUntil || 0);
+
+    if (ability.dashTimeLeft <= 0 && !actionBlocked) {
       updateHorizontalVelocity(controls, cameraController, velocity, PLAYER_CONFIG.speed);
+    }
+
+    // Apply minigame knockback velocity after movement update
+    if (minigameState.active && elapsed < minigameState.knockbackUntil) {
+      velocity.x = minigameState.knockbackVelX;
+      velocity.z = minigameState.knockbackVelZ;
     }
 
     cameraController.updateFromKeys(keys, dt);
 
-    const jumpPressed = controls.isActionPressed("jump");
-    const jumpHeld = controls.isActionDown("jump");
-    const dashPressed = controls.isActionPressed("dash");
+    const jumpPressed = !actionBlocked && controls.isActionPressed("jump");
+    const jumpHeld = !actionBlocked && controls.isActionDown("jump");
+    const dashPressed = !actionBlocked && controls.isActionPressed("dash");
 
     const physics = stepPlayerPhysics({
       player,
@@ -1139,8 +1256,8 @@ export function startGame(uiElement, options = {}) {
     if (minigameState.active) {
       // Buffered tap vs hold heuristic: short taps register as slashes,
       // holds starting after `chargeStartDelay` begin charging for explosion.
-      const slashDown = controls.isActionDown("slash");
-      const slashPressed = controls.isActionPressed("slash");
+      const slashDown = !actionBlocked && controls.isActionDown("slash");
+      const slashPressed = !actionBlocked && controls.isActionPressed("slash");
       const tapWindow = 0.06; // small window to consider fast taps
       const chargeStartDelay = 0.18; // how long before we treat hold as charge
       const chargeHoldDuration = 0.75;
@@ -1161,7 +1278,7 @@ export function startGame(uiElement, options = {}) {
           });
           minigameState.slashCooldownUntil = elapsed + 0.22;
           minigameState.slashAnimUntil = elapsed + 0.19;
-          audio.playSfx("enemy", slashResult.hits > 0 ? 0.72 : 0.48);
+          audio.playSfx("slash", slashResult.hits > 0 ? 0.72 : 0.48);
           effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
           effects.emitSlash(player.position, direction, {
             color: 0xffd45c,
@@ -1213,7 +1330,7 @@ export function startGame(uiElement, options = {}) {
         if (minigameState.chargeHeldSince != null) {
           const held = elapsed - minigameState.chargeHeldSince;
           if (held >= chargeHoldDuration && elapsed >= (minigameState.chargeCooldownUntil || 0) && !minigameState.won) {
-            audio.playSfx("explosion", 0.95);
+            audio.playSfx("chargedSlash", 0.95);
             const baseBlast = 5.0;
             const blastRadius = baseBlast * 3.6; // 1.2x larger than the prior charged radius
             const explosionScale = Math.max(10, Math.round(blastRadius * 0.85 * 10) / 10);
@@ -1252,7 +1369,7 @@ export function startGame(uiElement, options = {}) {
             });
             minigameState.slashCooldownUntil = elapsed + 0.22;
             minigameState.slashAnimUntil = elapsed + 0.19;
-            audio.playSfx("enemy", slashResult.hits > 0 ? 0.72 : 0.48);
+            audio.playSfx("slash", slashResult.hits > 0 ? 0.72 : 0.48);
             effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
             effects.emitSlash(player.position, direction, {
               color: 0xffd45c,
@@ -1283,7 +1400,7 @@ export function startGame(uiElement, options = {}) {
             });
             minigameState.slashCooldownUntil = elapsed + 0.22;
             minigameState.slashAnimUntil = elapsed + 0.19;
-            audio.playSfx("enemy", slashResult.hits > 0 ? 0.72 : 0.48);
+            audio.playSfx("slash", slashResult.hits > 0 ? 0.72 : 0.48);
             effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
             effects.emitSlash(player.position, direction, {
               color: 0xffd45c,
@@ -1319,7 +1436,7 @@ export function startGame(uiElement, options = {}) {
           sphere: true
         });
         globalSlashCooldownUntil = elapsed + 0.26;
-        audio.playSfx("enemy", slashResult.hits > 0 ? 0.68 : 0.42);
+        audio.playSfx("slash", slashResult.hits > 0 ? 0.68 : 0.42);
         effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
         effects.emitSlash(player.position, direction, {
           color: 0xffd45c,
@@ -1371,8 +1488,22 @@ export function startGame(uiElement, options = {}) {
       cancelMinigameCharge();
       triggerDamageFeedback(elapsed);
       effects.emit("hit", player.position, { x: 0, y: 1.2, z: 0 }, 0.55, 10);
-      player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
-      velocity.set(0, 0, 0);
+
+      // Minigame gets low damage and knockback animation; campaign keeps the old respawn behavior.
+      if (minigameState.active) {
+        minigameState.playerHealth = Math.max(0, minigameState.playerHealth - 10);
+        const source = getNearestMinigameEnemySource();
+        triggerMinigameHitReaction(elapsed, source?.x ?? player.position.x, source?.z ?? player.position.z, 70, 0.5);
+        minigameState.actionDisabledUntil = elapsed + 0.1;
+        if (minigameState.playerHealth <= 0 && !minigameState.gameOverHandled) {
+          minigameState.gameOverHandled = true;
+          showMinigameGameOver();
+        }
+      } else {
+        player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
+        velocity.set(0, 0, 0);
+      }
+      
       resetAbilityState(ability, PLAYER_CONFIG.extraAirJumps);
       grounded = false;
     }
@@ -1384,10 +1515,18 @@ export function startGame(uiElement, options = {}) {
         cancelMinigameCharge();
         effects.emit("hit", player.position, { x: 0, y: 1.1, z: 0 }, 0.9, 18);
         triggerDamageFeedback(elapsed);
-        player.position.set(runtime.spawn.x, runtime.spawn.y, runtime.spawn.z);
-        velocity.set(0, 0, 0);
-        resetAbilityState(ability, PLAYER_CONFIG.extraAirJumps);
-        grounded = false;
+
+        // Spike balls deal light damage and trigger the minigame-only knockback animation.
+        minigameState.playerHealth = Math.max(0, minigameState.playerHealth - 20);
+        const impact = bombResult.impacts?.[0];
+        triggerMinigameHitReaction(elapsed, impact?.x ?? player.position.x, impact?.z ?? player.position.z, 67.5, 0.5);
+        minigameState.actionDisabledUntil = elapsed + 0.1;
+
+        // Check for game over
+        if (minigameState.playerHealth <= 0 && !minigameState.gameOverHandled) {
+          minigameState.gameOverHandled = true;
+          showMinigameGameOver();
+        }
       }
     }
 
@@ -1470,7 +1609,21 @@ export function startGame(uiElement, options = {}) {
         const swingWave = Math.sin(Math.min(1, Math.max(0, swingProgress)) * Math.PI);
         player.rightArm.rotation.z = baseArmRotation - swingWave * 1.55;
       } else {
-        player.rightArm.rotation.z += (baseArmRotation - player.rightArm.rotation.z) * Math.min(1, dt * 10);
+        player.rightArm.rotation.z += (baseArmRotation - player.rightArm.rotation.z) * Math.min(1, dt * 1020);
+      }
+    }
+
+    if (minigameState.active) {
+      if (elapsed < minigameState.hitReactUntil) {
+        const hitProgress = 1 - (minigameState.hitReactUntil - elapsed) / minigameState.hitReactDuration;
+        const ease = Math.sin(Math.min(1, Math.max(0, hitProgress)) * Math.PI);
+        player.scale.set(1 + ease * 0.08, 1 - ease * 0.05, 1 + ease * 0.08);
+        player.rotation.x = minigameState.hitReactDirZ * ease * 0.18;
+        player.rotation.z = -minigameState.hitReactDirX * ease * 0.18;
+      } else {
+        player.scale.set(1, 1, 1);
+        player.rotation.x = 0;
+        player.rotation.z = 0;
       }
     }
 

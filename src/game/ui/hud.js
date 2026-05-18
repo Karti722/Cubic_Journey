@@ -15,39 +15,13 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
 
   const panel = document.createElement("div");
   panel.className = "cj-glass cj-scrollbar";
-  panel.style.padding = "12px 12px 10px";
+  panel.style.padding = "12px";
   panel.style.maxHeight = "calc(100vh - 32px)";
   panel.style.overflow = "auto";
   panel.style.backdropFilter = "blur(8px) saturate(120%)";
   panel.style.background = "rgba(12, 18, 28, 0.82)";
   panel.style.boxShadow = "0 14px 30px rgba(0,0,0,0.28)";
   root.appendChild(panel);
-
-  const header = document.createElement("div");
-  header.style.display = "flex";
-  header.style.flexWrap = "wrap";
-  header.style.gap = "8px";
-  header.style.marginBottom = "10px";
-  panel.appendChild(header);
-
-  const title = document.createElement("div");
-  title.className = "cj-chip";
-  title.style.fontWeight = "700";
-  title.textContent = "Cubic Journey";
-  header.appendChild(title);
-
-  const status = document.createElement("div");
-  status.className = "cj-chip";
-  status.textContent = "HUD";
-  header.appendChild(status);
-
-  const collapseHudButton = document.createElement("button");
-  collapseHudButton.className = "cj-chip";
-  collapseHudButton.style.pointerEvents = "auto";
-  collapseHudButton.style.cursor = "pointer";
-  collapseHudButton.style.marginLeft = "auto";
-  collapseHudButton.textContent = "Hide ◂";
-  header.appendChild(collapseHudButton);
 
   const content = document.createElement("div");
   content.style.display = "grid";
@@ -185,17 +159,6 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
   chargeChip.style.letterSpacing = "0.03em";
   fpsDock.appendChild(chargeChip);
 
-  function setHudCollapsed(nextState) {
-    hudCollapsed = nextState;
-    panel.style.display = hudCollapsed ? "none" : "block";
-    collapsedHudTab.style.display = hudCollapsed ? "inline-flex" : "none";
-    root.style.width = hudCollapsed ? "auto" : expandedRootWidth;
-    collapseHudButton.textContent = hudCollapsed ? "Show ▸" : "Hide ◂";
-  }
-
-  collapseHudButton.addEventListener("click", () => setHudCollapsed(!hudCollapsed));
-  collapsedHudTab.addEventListener("click", () => setHudCollapsed(false));
-
   const helpDock = document.createElement("div");
   helpDock.style.position = "fixed";
   helpDock.style.right = "64px";
@@ -322,23 +285,6 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
     infoRow.style.display = "grid";
     infoRow.style.gap = "8px";
     infoRow.style.marginTop = "4px";
-
-    const infoToggle = document.createElement("button");
-    infoToggle.className = "cj-card";
-    infoToggle.style.pointerEvents = "auto";
-    infoToggle.style.display = "flex";
-    infoToggle.style.justifyContent = "space-between";
-    infoToggle.style.alignItems = "center";
-    infoToggle.style.padding = "10px 12px";
-    infoToggle.style.cursor = "pointer";
-    infoToggle.style.color = "white";
-    infoToggle.style.textAlign = "left";
-    infoToggle.innerHTML = `<span style="font-weight: 700;">Campaign Info</span>`;
-    infoToggle.addEventListener("click", () => {
-      campaignInfoExpanded = !campaignInfoExpanded;
-      update(model);
-    });
-    infoRow.appendChild(infoToggle);
 
     if (campaignInfoExpanded) {
       const infoModal = document.createElement("div");
@@ -493,8 +439,6 @@ export function createHud(uiElement, { onOpenInfo } = {}) {
       }
     }, 280);
   }
-
-  setHudCollapsed(false);
 
   return { update, showCenterBanner };
 }

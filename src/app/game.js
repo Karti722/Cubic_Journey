@@ -647,8 +647,8 @@ export function startGame(uiElement, options = {}) {
 
   const pauseMenu = createPauseMenu({
     getModel: () => buildPauseModel(),
+    onPlayPauseSfx: () => audio.playSfx("pause", 0.55),
     onResume: () => {
-      audio.playSfx("pause", 0.55);
       paused = false;
       pauseMenu.close();
       if (musicEnabled) audio.resumeMusic();
@@ -668,7 +668,6 @@ export function startGame(uiElement, options = {}) {
       if (musicEnabled) audio.resumeMusic();
     },
     onReturnTitle: () => {
-      audio.playSfx("pause", 0.55);
       paused = false;
       pauseMenu.close();
       location.reload();
@@ -1201,24 +1200,24 @@ export function startGame(uiElement, options = {}) {
 
     if (!runtime) return;
 
-    if (controlsMenu.isOpen() || shopMenu.isOpen() || debugMenu.isOpen()) {
-      hud.update(buildHudModel());
-      renderer.render(scene, camera);
-      return;
-    }
-
     if (isDebugMenuTogglePressed()) {
-      if (!debugMenu.isOpen()) {
+      if (debugMenu.isOpen()) {
+        debugMenu.close();
+        paused = false;
+        if (musicEnabled) audio.resumeMusic();
+      } else if (!controlsMenu.isOpen() && !shopMenu.isOpen()) {
         paused = true;
         worldMenu.close();
         pauseMenu.close();
         debugMenu.open();
         audio.pauseMusic();
-      } else {
-        debugMenu.close();
-        paused = false;
-        if (musicEnabled) audio.resumeMusic();
       }
+    }
+
+    if (controlsMenu.isOpen() || shopMenu.isOpen() || debugMenu.isOpen()) {
+      hud.update(buildHudModel());
+      renderer.render(scene, camera);
+      return;
     }
 
     if (controls.isActionPressed("pause")) {
@@ -1227,10 +1226,8 @@ export function startGame(uiElement, options = {}) {
         worldMenu.close();
         debugMenu.close();
         pauseMenu.open();
-        audio.playSfx("pause", 0.6);
         audio.pauseMusic();
       } else {
-        audio.playSfx("pause", 0.5);
         pauseMenu.close();
         if (musicEnabled) audio.resumeMusic();
       }

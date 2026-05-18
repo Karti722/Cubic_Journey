@@ -1,6 +1,6 @@
 import { ensureUiTheme, styleButton, styleOverlayRoot, stylePanel } from "./ui-theme.js";
 
-export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld, onReturnTitle, onResetSave, onToggleMusic, onOpenControls, onOpenShop, onOpenInfo, onEnterMinigame }) {
+export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld, onReturnTitle, onResetSave, onToggleMusic, onOpenControls, onOpenShop, onOpenInfo, onEnterMinigame, onPlayPauseSfx }) {
   ensureUiTheme();
 
   const root = document.createElement("div");
@@ -129,13 +129,17 @@ export function createPauseMenu({ getModel, onResume, onSelectHub, onSelectWorld
   }
 
   function open() {
+    if (isOpen) return;
     isOpen = true;
+    if (typeof onPlayPauseSfx === "function") onPlayPauseSfx();
     render();
     root.style.display = "flex";
   }
 
   function close() {
+    if (!isOpen) return;
     isOpen = false;
+    if (typeof onPlayPauseSfx === "function") onPlayPauseSfx();
     root.style.display = "none";
   }
 

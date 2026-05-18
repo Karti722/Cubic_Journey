@@ -33,6 +33,7 @@ import { loadControlBindings, resetControlBindings, saveControlBindings } from "
 import { createActionEffects } from "../game/effects/action-effects.js";
 import { SKILL_DEFINITIONS } from "../game/skills/skill-data.js";
 import { createProceduralVisuals } from "../game/render/procedural-visuals.js";
+const REGULAR_SLASH_ANIM = 0.32;
 
 export function startGame(uiElement, options = {}) {
   const { scene, camera, renderer, clock } = createRenderContext();
@@ -196,6 +197,7 @@ export function startGame(uiElement, options = {}) {
   let lastMoveSignZ = 0;
   let prevSlashDown = false;
   let globalSlashCooldownUntil = 0;
+  let globalSlashAnimUntil = 0;
   let minigameIntroTimer = null;
   let minigameAdvanceTimer = null;
 
@@ -1290,7 +1292,7 @@ export function startGame(uiElement, options = {}) {
 
     grounded = physics.grounded;
 
-    if (jumpPressed) {
+    if (physics.jumped) {
       audio.playSfx("jump", 0.65);
       effects.emit("jump", player.position, { x: 0, y: 1.4, z: 0 }, 0.35, 6);
     }
@@ -1311,7 +1313,7 @@ export function startGame(uiElement, options = {}) {
       if (slashPressed) {
         minigameState.slashBufferAt = elapsed;
         // Immediate full-circle slash on keydown for instant feel (short taps).
-        if (minigameState.chargeHeldSince == null && elapsed >= minigameState.slashCooldownUntil && !minigameState.won) {
+        if (minigameState.chargeHeldSince == null && elapsed >= minigameState.slashCooldownUntil && elapsed >= minigameState.slashAnimUntil && !minigameState.won) {
           const direction = getDashDirection();
           const slashResult = resolveSwordSlash(player, runtime.enemies, {
             radius: REGULAR_SLASH_RADIUS,
@@ -1323,13 +1325,13 @@ export function startGame(uiElement, options = {}) {
             sphere: true
           });
           minigameState.slashCooldownUntil = elapsed + 0.22;
-          minigameState.slashAnimUntil = elapsed + 0.19;
+          minigameState.slashAnimUntil = elapsed + REGULAR_SLASH_ANIM;
           audio.playSfx("slash", slashResult.hits > 0 ? 0.72 : 0.48);
           effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
           effects.emitSlash(player.position, direction, {
             color: 0xffd45c,
             scale: REGULAR_SLASH_RADIUS,
-            life: 0.18,
+            life: REGULAR_SLASH_ANIM,
             fullCircle: true,
             sphere: true
           });
@@ -1426,13 +1428,13 @@ export function startGame(uiElement, options = {}) {
               sphere: true
             });
             minigameState.slashCooldownUntil = elapsed + 0.22;
-            minigameState.slashAnimUntil = elapsed + 0.19;
+            minigameState.slashAnimUntil = elapsed + REGULAR_SLASH_ANIM;
             audio.playSfx("slash", slashResult.hits > 0 ? 0.72 : 0.48);
             effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
             effects.emitSlash(player.position, direction, {
               color: 0xffd45c,
               scale: REGULAR_SLASH_RADIUS,
-              life: 0.18,
+              life: REGULAR_SLASH_ANIM,
               fullCircle: true,
               sphere: true
             });
@@ -1450,7 +1452,7 @@ export function startGame(uiElement, options = {}) {
         } else if (minigameState.slashBufferAt != null) {
           const bufferedHeld = elapsed - minigameState.slashBufferAt;
           // quick tap -> instant-feel slash (on release within tapWindow)
-          if (bufferedHeld <= tapWindow && elapsed >= minigameState.slashCooldownUntil && !minigameState.won && !minigameState.slashFiredThisPress) {
+          if (bufferedHeld <= tapWindow && elapsed >= minigameState.slashCooldownUntil && elapsed >= minigameState.slashAnimUntil && !minigameState.won && !minigameState.slashFiredThisPress) {
             const direction = getDashDirection();
             const slashResult = resolveSwordSlash(player, runtime.enemies, {
               radius: REGULAR_SLASH_RADIUS,
@@ -1462,13 +1464,13 @@ export function startGame(uiElement, options = {}) {
               sphere: true
             });
             minigameState.slashCooldownUntil = elapsed + 0.22;
-            minigameState.slashAnimUntil = elapsed + 0.19;
+            minigameState.slashAnimUntil = elapsed + REGULAR_SLASH_ANIM;
             audio.playSfx("slash", slashResult.hits > 0 ? 0.72 : 0.48);
             effects.emit("hit", player.position, { x: direction.x * 0.9, y: 0.7, z: direction.z * 0.9 }, 0.75, slashResult.hits > 0 ? 12 : 5);
             effects.emitSlash(player.position, direction, {
               color: 0xffd45c,
               scale: REGULAR_SLASH_RADIUS,
-              life: 0.18,
+              life: REGULAR_SLASH_ANIM,
               fullCircle: true,
               sphere: true
             });
@@ -1504,7 +1506,7 @@ export function startGame(uiElement, options = {}) {
         effects.emitSlash(player.position, direction, {
           color: 0xffd45c,
           scale: REGULAR_SLASH_RADIUS,
-          life: 0.18,
+          life: REGULAR_SLASH_ANIM,
           fullCircle: true,
           sphere: true
         });
@@ -1680,7 +1682,7 @@ export function startGame(uiElement, options = {}) {
     if (minigameState.active && player.rightArm) {
       const baseArmRotation = -0.42;
       if (elapsed < minigameState.slashAnimUntil) {
-        const swingProgress = 1 - (minigameState.slashAnimUntil - elapsed) / 0.19;
+        const swingProgress = 1 - (minigameState.slashAnimUntil - elapsed) / REGULAR_SLASH_ANIM;
         const swingWave = Math.sin(Math.min(1, Math.max(0, swingProgress)) * Math.PI);
         player.rightArm.rotation.z = baseArmRotation - swingWave * 1.55;
       } else {

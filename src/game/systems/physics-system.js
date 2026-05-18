@@ -27,6 +27,7 @@ export function stepPlayerPhysics({
   skills = {}
 }) {
   const jumpHeld = Boolean(input.jumpHeld);
+  let jumped = false;
   const hasWallClimb = Boolean(skills.wallClimb);
   const hasGlide = Boolean(skills.glide);
   const hasPlatformMagnet = Boolean(skills.platformMagnet);
@@ -38,9 +39,11 @@ export function stepPlayerPhysics({
   }
 
   if (input.jumpPressed) {
+    // Apply jump (grounded jump, wall jump, or mid-air extra jump)
     if (grounded) {
       velocity.y = config.jumpVelocity;
       grounded = false;
+      jumped = true;
     } else if (ability.wallNormal) {
       velocity.y = config.jumpVelocity * (hasWallClimb ? 1.06 : 0.95);
       velocity.x = ability.wallNormal.x * config.wallJumpPush;
@@ -48,9 +51,11 @@ export function stepPlayerPhysics({
       ability.extraJumpsLeft = config.extraAirJumps;
       ability.dashAvailable = true;
       ability.wallNormal = null;
+      jumped = true;
     } else if (ability.extraJumpsLeft > 0) {
       velocity.y = config.jumpVelocity * 0.92;
       ability.extraJumpsLeft -= 1;
+      jumped = true;
     }
   }
 
@@ -147,7 +152,8 @@ export function stepPlayerPhysics({
 
   return {
     grounded,
-    fell: player.position.y < fallLimit
+    fell: player.position.y < fallLimit,
+    jumped: !!jumped
   };
 }
 

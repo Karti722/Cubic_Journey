@@ -819,8 +819,8 @@ export function startGame(uiElement, options = {}) {
     }
 
     const world = GAME_CONFIG.campaignWorlds[campaign.state.worldIndex];
-    const regularLevelSkipPrompt = runtime && !runtime.isBossStage && campaign.canAfford(50)
-      ? "Press 1 to skip this level (Charge: 50 coins)"
+    const regularLevelSkipPrompt = runtime && !runtime.isBossStage && campaign.canAfford(80)
+      ? "Press 1 to skip this level (Charge: 80 coins)"
       : "";
     return {
       mode: "level",
@@ -1726,7 +1726,7 @@ export function startGame(uiElement, options = {}) {
       const nearbyPortal = findNearbyPortal(player, runtime.portals, GAME_CONFIG.portalRadius);
       const pressedEnter = controls.isActionPressed("interact");
       const pressedSkip = isSkipKeyPressed();
-      const canSkipWorld = nearbyPortal && nearbyPortal.unlocked && campaign.canAfford(100);
+      const canSkipWorld = nearbyPortal && nearbyPortal.unlocked && campaign.canAfford(500);
 
       if (nearbyPortal && pressedEnter && nearbyPortal.unlocked) {
         const progress = campaign.state.worldProgress[nearbyPortal.worldIndex];
@@ -1734,7 +1734,7 @@ export function startGame(uiElement, options = {}) {
         travelToWorld(nearbyPortal.worldIndex, progress.highestUnlockedStage);
       }
 
-      if (pressedSkip && canSkipWorld && campaign.spendCurrency(100)) {
+      if (pressedSkip && canSkipWorld && campaign.spendCurrency(500)) {
         audio.playSfx("explosion", 0.85);
         const worldIndex = nearbyPortal.worldIndex;
         const world = GAME_CONFIG.campaignWorlds[worldIndex];
@@ -1769,11 +1769,11 @@ export function startGame(uiElement, options = {}) {
             : `${nearbyPortal.name} is locked (need key cubes)`
           : "",
         skipPrompt: canSkipWorld
-          ? `Press 1 to skip ${nearbyPortal.name} for 100 currency and claim its boss cube`
+          ? `Press 1 to skip ${nearbyPortal.name} for 500 currency and claim its boss cube`
           : ""
       });
     } else {
-      const skipCost = runtime.isBossStage ? 60 : 50;
+      const skipCost = runtime.isBossStage ? 100 : 80;
       const canSkipLevel = campaign.canAfford(skipCost);
       const pressedSkip = isSkipKeyPressed();
 
@@ -1839,7 +1839,7 @@ export function startGame(uiElement, options = {}) {
       const hudModel = buildHudModel();
       hud.update({
         ...hudModel,
-        skipPrompt: hudModel.skipPrompt || (campaign.canAfford(60) ? "Press 1 to claim the boss cube (Charge: 60 coins)" : "")
+        skipPrompt: hudModel.skipPrompt || (campaign.canAfford(100) ? "Press 1 to claim the boss cube (Charge: 100 coins)" : "")
       });
     }
 

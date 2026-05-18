@@ -3,6 +3,8 @@ export function createAbilityState(extraAirJumps) {
     extraJumpsLeft: extraAirJumps,
     dashAvailable: true,
     dashTimeLeft: 0,
+    // time left before another ground dash can be used
+    groundDashCooldownTimeLeft: 0,
     wallNormal: null
   };
 }
@@ -11,6 +13,7 @@ export function resetAbilityState(ability, extraAirJumps) {
   ability.extraJumpsLeft = extraAirJumps;
   ability.dashAvailable = true;
   ability.dashTimeLeft = 0;
+  ability.groundDashCooldownTimeLeft = 0;
   ability.wallNormal = null;
 }
 
@@ -28,6 +31,7 @@ export function stepPlayerPhysics({
 }) {
   const jumpHeld = Boolean(input.jumpHeld);
   let jumped = false;
+  let dashed = false;
   const hasWallClimb = Boolean(skills.wallClimb);
   const hasGlide = Boolean(skills.glide);
   const hasPlatformMagnet = Boolean(skills.platformMagnet);
@@ -65,15 +69,27 @@ export function stepPlayerPhysics({
     velocity.z = ability.wallNormal.z * (config.wallJumpPush * 0.22);
   }
 
-  if (input.dashPressed && ability.dashAvailable) {
+  // tick down ground dash cooldown
+  if (ability.groundDashCooldownTimeLeft > 0) {
+    ability.groundDashCooldownTimeLeft = Math.max(0, ability.groundDashCooldownTimeLeft - dt);
+  }
+
+  if (input.dashPressed && (ability.dashAvailable || grounded) && (grounded ? ability.groundDashCooldownTimeLeft <= 0 : true)) {
     const direction = normalize2D(input.dashDirection.x, input.dashDirection.z);
-    const dashSpeed = hasDashBoost ? config.dashSpeed * 1.18 : config.dashSpeed;
+    // make dash stronger to compensate
+    const STRICTER_DASH_MULT = 1.45;
+    const dashBase = hasDashBoost ? config.dashSpeed * 1.18 : config.dashSpeed;
+    const dashSpeed = dashBase * STRICTER_DASH_MULT;
     velocity.x = direction.x * dashSpeed;
     velocity.z = direction.z * dashSpeed;
     velocity.y = Math.max(0, velocity.y);
-
-    ability.dashAvailable = false;
+    if (!grounded) {
+      ability.dashAvailable = false;
+    }
     ability.dashTimeLeft = config.dashDuration;
+    dashed = true;
+    // if dashing from ground, add a short cooldown before next ground dash
+    if (grounded) ability.groundDashCooldownTimeLeft = 0.4;
   }
 
   if (ability.dashTimeLeft > 0) {
@@ -153,7 +169,8 @@ export function stepPlayerPhysics({
   return {
     grounded,
     fell: player.position.y < fallLimit,
-    jumped: !!jumped
+    jumped: !!jumped,
+    dashed: !!dashed
   };
 }
 

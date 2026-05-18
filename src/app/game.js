@@ -433,9 +433,8 @@ export function startGame(uiElement, options = {}) {
 
     gameOverRoot.innerHTML = `
       <div style="width:min(720px, calc(100vw - 32px)); padding: 28px 24px; text-align:center; background: rgba(20, 10, 16, 0.96); border: 2px solid rgba(255, 80, 120, 0.4); border-radius: 18px; box-shadow: 0 28px 70px rgba(0,0,0,0.65), 0 0 40px rgba(255, 80, 120, 0.2);">
-        <div style="font-size: 1rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,150,150,0.8); margin-bottom: 10px;">Health Depleted</div>
-        <div style="font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: 0.04em; margin-bottom: 10px; color: #ff5a7e;">Game Over</div>
-        <div style="font-size: 1rem; line-height: 1.55; color: rgba(255,255,255,0.84); margin-bottom: 24px;">You were defeated by the goblin bombs. Returning to the hub...</div>
+        <div style="font-size: clamp(2rem, 4.4vw, 3rem); font-weight: 900; letter-spacing: 0.05em; margin-bottom: 12px; color: #ff5a7e;">GAME OVER</div>
+        <div style="font-size: 1.08rem; line-height: 1.6; color: rgba(255,255,255,0.88); margin-bottom: 24px;">The goblins took over. You were defeated.</div>
       </div>
     `;
     document.body.appendChild(gameOverRoot);
@@ -1296,7 +1295,7 @@ export function startGame(uiElement, options = {}) {
       audio.playSfx("jump", 0.65);
       effects.emit("jump", player.position, { x: 0, y: 1.4, z: 0 }, 0.35, 6);
     }
-    if (dashPressed) {
+    if (physics.dashed && !paused && !actionBlocked) {
       audio.playSfx("dash", 0.7);
       effects.emit("dash", player.position, getDashDirectionVector(), 0.8, 14);
     }

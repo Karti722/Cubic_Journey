@@ -74,6 +74,52 @@ export function startGame(uiElement, options = {}) {
   const effects = createActionEffects(scene);
   const loadingScreen = createLoadingScreen();
 
+  // Coin feedback display system
+  function displayCoinFeedback(worldPosition, amount) {
+    const feedbackDiv = document.createElement("div");
+    feedbackDiv.style.position = "fixed";
+    feedbackDiv.style.pointerEvents = "none";
+    feedbackDiv.style.fontFamily = "Inter, 'Segoe UI', sans-serif";
+    feedbackDiv.style.fontWeight = "700";
+    feedbackDiv.style.fontSize = "20px";
+    feedbackDiv.style.color = "#ffd45c";
+    feedbackDiv.style.textShadow = "0 0 8px rgba(255, 212, 92, 0.6), 0 2px 4px rgba(0,0,0,0.8)";
+    feedbackDiv.style.zIndex = "1000";
+    feedbackDiv.textContent = `+${amount} coin${amount > 1 ? 's' : ''}`;
+    
+    // Start position (convert 3D to 2D screen coords)
+    const screenPos = new THREE.Vector3();
+    screenPos.copy(worldPosition);
+    screenPos.project(camera);
+    const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (1 - (screenPos.y * 0.5 + 0.5)) * window.innerHeight;
+    
+    feedbackDiv.style.left = x + "px";
+    feedbackDiv.style.top = y + "px";
+    feedbackDiv.style.transform = "translate(-50%, -50%)";
+    uiElement.appendChild(feedbackDiv);
+    
+    // Animate upward with fade-out
+    const startTime = performance.now();
+    const duration = 1.2; // seconds
+    let animId = null;
+    
+    function animate() {
+      const elapsed = (performance.now() - startTime) / 1000;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      feedbackDiv.style.transform = `translate(-50%, calc(-50% - ${progress * 40}px))`;
+      feedbackDiv.style.opacity = Math.max(0, 1 - progress);
+      
+      if (progress < 1) {
+        animId = requestAnimationFrame(animate);
+      } else {
+        feedbackDiv.remove();
+      }
+    }
+    animate();
+  }
+
   const defaultSave = createDefaultCampaignSave(GAME_CONFIG.campaignWorlds);
   const loadedSave = loadSave(defaultSave);
   const campaign = createCampaignState(GAME_CONFIG.campaignWorlds, loadedSave);
@@ -773,8 +819,8 @@ export function startGame(uiElement, options = {}) {
     }
 
     const world = GAME_CONFIG.campaignWorlds[campaign.state.worldIndex];
-    const regularLevelSkipPrompt = runtime && !runtime.isBossStage && campaign.canAfford(20)
-      ? "Press 1 to skip this level (Charge: 20 coins)"
+    const regularLevelSkipPrompt = runtime && !runtime.isBossStage && campaign.canAfford(50)
+      ? "Press 1 to skip this level (Charge: 50 coins)"
       : "";
     return {
       mode: "level",
@@ -1289,6 +1335,11 @@ export function startGame(uiElement, options = {}) {
           });
           if (slashResult.defeated > 0) {
             audio.playSfx("enemyDefeat", 0.84);
+            // Reward coins for defeating goblins
+            const coinReward = slashResult.defeated * 3;
+            campaign.state.currency += coinReward;
+            audio.playSfx("coin", 0.6);
+            displayCoinFeedback(player.position, coinReward);
             effects.emit("dash", player.position, { x: direction.x * 0.6, y: 0.5, z: direction.z * 0.6 }, 0.7, 10);
           }
           refreshMinigameStatus();
@@ -1351,7 +1402,14 @@ export function startGame(uiElement, options = {}) {
                 obliterated++;
               }
             }
-            if (obliterated > 0) audio.playSfx("enemyDefeat", 0.9);
+            if (obliterated > 0) {
+              audio.playSfx("enemyDefeat", 0.9);
+              // Reward coins for defeating goblins with blast
+              const coinReward = obliterated * 3;
+              campaign.state.currency += coinReward;
+              audio.playSfx("coin", 0.7);
+              displayCoinFeedback(player.position, coinReward);
+            }
             effects.emit("dash", player.position, { x: 0, y: 0.8, z: 0 }, 1.2, 18);
             minigameState.chargeCooldownUntil = elapsed + 8.0;
             refreshMinigameStatus();
@@ -1380,6 +1438,11 @@ export function startGame(uiElement, options = {}) {
             });
             if (slashResult.defeated > 0) {
               audio.playSfx("enemyDefeat", 0.84);
+              // Reward coins for defeating goblins
+              const coinReward = slashResult.defeated * 3;
+              campaign.state.currency += coinReward;
+              audio.playSfx("coin", 0.6);
+              displayCoinFeedback(player.position, coinReward);
               effects.emit("dash", player.position, { x: direction.x * 0.6, y: 0.5, z: direction.z * 0.6 }, 0.7, 10);
             }
             refreshMinigameStatus();
@@ -1445,7 +1508,14 @@ export function startGame(uiElement, options = {}) {
           fullCircle: true,
           sphere: true
         });
-        if (slashResult.defeated > 0) audio.playSfx("enemyDefeat", 0.8);
+        if (slashResult.defeated > 0) {
+          audio.playSfx("enemyDefeat", 0.8);
+          // Reward coins for defeating goblins in campaign
+          const coinReward = slashResult.defeated * 3;
+          campaign.state.currency += coinReward;
+          audio.playSfx("coin", 0.6);
+          displayCoinFeedback(player.position, coinReward);
+        }
       }
     }
 
@@ -1479,6 +1549,11 @@ export function startGame(uiElement, options = {}) {
 
     if (enemyContact.defeated > 0) {
       audio.playSfx("enemyDefeat", 0.78);
+      // Reward coins for defeating goblins by stomping
+      const coinReward = enemyContact.defeated * 3;
+      campaign.state.currency += coinReward;
+      audio.playSfx("coin", 0.6);
+      displayCoinFeedback(player.position, coinReward);
       grounded = false;
       effects.emit("hit", player.position, { x: 0, y: 1.3, z: 0 }, 0.5, 8);
       if (minigameState.active) refreshMinigameStatus();
@@ -1698,7 +1773,7 @@ export function startGame(uiElement, options = {}) {
           : ""
       });
     } else {
-      const skipCost = runtime.isBossStage ? 60 : 20;
+      const skipCost = runtime.isBossStage ? 60 : 50;
       const canSkipLevel = campaign.canAfford(skipCost);
       const pressedSkip = isSkipKeyPressed();
 
@@ -1732,6 +1807,7 @@ export function startGame(uiElement, options = {}) {
         collectedCoins += collectedThisFrame;
         campaign.earnCurrency(collectedThisFrame);
         audio.playSfx("collect", 0.5);
+        displayCoinFeedback(player.position, collectedThisFrame);
         effects.emit("collect", player.position, { x: 0, y: 0.8, z: 0 }, 0.25, 3);
         persistProgress();
       }

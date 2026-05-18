@@ -101,8 +101,19 @@ export function createStageDefinition(worldIndex, stageIndex) {
 
     platforms.push({ x, y, z, sx: width, sy: 1, sz: depth, color: platformColor });
 
-    if ((i + templateId) % 3 === 0) {
+    // Spawn coins more frequently - almost every segment with multiple coins
+    if ((i + templateId) % 2 === 0) {
       collectibles.push({ x, y: y + 1.3, z, value: 1 });
+      // Add additional coin clusters
+      if ((i + templateId) % 4 === 0) {
+        collectibles.push({ x: x + 0.6, y: y + 1.3, z: z + 0.4, value: 1 });
+        collectibles.push({ x: x - 0.6, y: y + 1.3, z: z - 0.4, value: 1 });
+      }
+    }
+    // Add bonus coins in specific locations
+    if ((i + templateId) % 5 === 0) {
+      collectibles.push({ x, y: y + 1.8, z: z + 0.5, value: 1 });
+      collectibles.push({ x: x + 0.3, y: y + 1.5, z, value: 1 });
     }
 
     if ((i + templateId) % 7 === 2) {
@@ -114,7 +125,7 @@ export function createStageDefinition(worldIndex, stageIndex) {
     }
 
     if (
-      enemies.length < maxStandardEnemies
+      enemies.length < maxStandardEnemies * 1.5
       && shouldSpawnStandardEnemy(i, templateId, rng, worldDifficulty, stageIndex)
     ) {
       const radius = 0.56 + worldDifficulty * 0.2 + rng() * 0.06;
@@ -491,7 +502,8 @@ function getWorldDifficulty(worldIndex, stageIndex, worldStageCount) {
 function shouldSpawnStandardEnemy(i, templateId, rng, worldDifficulty, stageIndex) {
   if (i <= 2) return false;
 
-  const rhythmGate = ((i + templateId + stageIndex) % 5) <= 1;
-  const chance = 0.2 + worldDifficulty * 0.55;
+  // Spawn goblins more frequently with tighter rhythm gate
+  const rhythmGate = ((i + templateId + stageIndex) % 4) <= 1;
+  const chance = 0.45 + worldDifficulty * 0.65;
   return rhythmGate && rng() < chance;
 }

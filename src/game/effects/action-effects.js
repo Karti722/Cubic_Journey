@@ -6,6 +6,7 @@ export function createActionEffects(scene) {
 
   const particles = [];
   const slashes = [];
+  const dashTrails = [];
   const colors = {
     jump: 0x66baff,
     dash: 0xffd45c,
@@ -15,6 +16,8 @@ export function createActionEffects(scene) {
     hit: 0xff5533,
     land: 0xb0b0b0
   };
+
+  const dashTrailTexture = createDashTrailTexture();
 
   for (let i = 0; i < 28; i += 1) {
     const material = new THREE.MeshStandardMaterial({
@@ -48,6 +51,68 @@ export function createActionEffects(scene) {
       active: false,
       ttl: 0,
       life: 0.18
+    });
+  }
+
+  for (let i = 0; i < 6; i += 1) {
+    const group = new THREE.Group();
+    group.visible = false;
+    root.add(group);
+
+    const parts = [];
+
+    for (let j = 0; j < 3; j += 1) {
+      const streakMaterial = new THREE.MeshBasicMaterial({
+        map: dashTrailTexture,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        color: 0xffffff
+      });
+      const streakMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.18), streakMaterial);
+      streakMesh.rotation.x = -Math.PI * 0.5;
+      group.add(streakMesh);
+      parts.push({ mesh: streakMesh, kind: "streak" });
+    }
+
+    const cloudColors = [0xff5a2c, 0xffb11f, 0xfff08a];
+    const cloudSpecs = [
+      { radius: 0.42, tube: 0.095, arc: Math.PI * 1.18, rotZ: -0.34, x: 0.70, y: 0.10, z: 0.00, opacity: 0.82 },
+      { radius: 0.38, tube: 0.09, arc: Math.PI * 1.1, rotZ: 0.30, x: 1.08, y: 0.24, z: 0.02, opacity: 0.68 },
+      { radius: 0.34, tube: 0.085, arc: Math.PI * 1.0, rotZ: 0.95, x: 1.08, y: -0.05, z: 0.00, opacity: 0.62 },
+      { radius: 0.30, tube: 0.08, arc: Math.PI * 1.22, rotZ: 0.45, x: 0.86, y: -0.24, z: 0.00, opacity: 0.56 }
+    ];
+
+    for (let j = 0; j < cloudSpecs.length; j += 1) {
+      const spec = cloudSpecs[j];
+      const mat = new THREE.MeshBasicMaterial({
+        color: cloudColors[j % cloudColors.length],
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending
+      });
+      const mesh = new THREE.Mesh(new THREE.TorusGeometry(spec.radius, spec.tube, 10, 28, spec.arc), mat);
+      mesh.rotation.x = Math.PI * 0.5;
+      mesh.rotation.z = spec.rotZ;
+      mesh.position.set(spec.x, spec.y, spec.z);
+      group.add(mesh);
+      parts.push({ mesh, kind: "cloud", opacity: spec.opacity });
+    }
+
+    dashTrails.push({
+      group,
+      parts,
+      active: false,
+      ttl: 0,
+      life: 0.34,
+      dirX: 0,
+      dirZ: 1,
+      stretch: 1,
+      wobble: 0
     });
   }
 
@@ -106,6 +171,114 @@ export function createActionEffects(scene) {
         (Math.random() - 0.5) * spread + velocity.z
       );
       particle.mesh.scale.setScalar(kind === "dash" ? 1.2 + Math.random() * 1.0 : 0.9 + Math.random() * 0.7);
+    }
+  }
+
+  function emitDashTrail(position, direction, options = {}) {
+    const dirX = direction?.x ?? 0;
+    const dirZ = direction?.z ?? 1;
+    const length = Math.hypot(dirX, dirZ);
+    const nx = length > 0.0001 ? dirX / length : 0;
+    const nz = length > 0.0001 ? dirZ / length : 1;
+    const dashLength = options.length ?? 5.4;
+    const offsetBack = options.offsetBack ?? 1.35;
+    const sideX = -nz;
+    const sideZ = nx;
+    let primaryTrail = null;
+
+    for (const trail of dashTrails) {
+      if (trail.active) continue;
+
+      trail.active = true;
+      trail.ttl = options.life ?? 0.4;
+      trail.life = options.life ?? 0.4;
+      trail.dirX = nx;
+      trail.dirZ = nz;
+      trail.stretch = dashLength;
+      trail.wobble = Math.random() * Math.PI * 2;
+      trail.group.visible = true;
+      trail.group.position.set(
+        position.x - nx * offsetBack,
+        position.y + 0.24,
+        position.z - nz * offsetBack
+      );
+      trail.group.rotation.y = Math.atan2(nx, nz) + Math.PI * 0.5;
+
+      const strokeOffsets = [-0.22, 0.0, 0.18];
+      const strokeScales = [1.0, 0.8, 0.62];
+      const strokeOpacities = [0.72, 0.58, 0.44];
+      const strokeColors = [0xff4b24, 0xffae1d, 0xfff08a];
+
+      for (let i = 0; i < 3; i += 1) {
+        const part = trail.parts[i];
+        part.mesh.position.set(
+          -dashLength * 0.34,
+          strokeOffsets[i],
+          (i - 1) * 0.02
+        );
+        part.mesh.scale.set(dashLength * (1.18 + i * 0.08), 0.16 * strokeScales[i], 1);
+        part.mesh.material.color.setHex(strokeColors[i]);
+        part.mesh.material.opacity = strokeOpacities[i];
+      }
+
+      for (let i = 3; i < trail.parts.length; i += 1) {
+        const specPart = trail.parts[i];
+        const idx = i - 3;
+        specPart.mesh.position.x = 0.72 + idx * 0.14;
+        specPart.mesh.position.y = [0.1, 0.23, -0.05, -0.2][idx];
+        specPart.mesh.position.z = [0, 0.02, 0, 0][idx];
+        specPart.mesh.scale.setScalar(1.0);
+        specPart.mesh.material.opacity = specPart.opacity;
+      }
+
+      const stretchBoost = 1 + (options.length ?? 5.4) * 0.02;
+      trail.group.scale.set(stretchBoost, 1, 1);
+      trail.group.rotation.z = (Math.random() - 0.5) * 0.14;
+      trail.group.position.x += sideX * (Math.random() * 0.06 - 0.03);
+      trail.group.position.z += sideZ * (Math.random() * 0.06 - 0.03);
+      primaryTrail = trail;
+
+      break;
+    }
+
+    if (primaryTrail && options.burstCount !== 1) {
+      // Create a secondary faint plume slightly offset for a more explosive silhouette.
+      const secondary = dashTrails.find(item => !item.active);
+      if (secondary) {
+        secondary.active = true;
+        secondary.ttl = (options.life ?? 0.4) * 0.82;
+        secondary.life = (options.life ?? 0.4) * 0.82;
+        secondary.dirX = nx;
+        secondary.dirZ = nz;
+        secondary.stretch = dashLength * 0.86;
+        secondary.wobble = Math.random() * Math.PI * 2;
+        secondary.group.visible = true;
+        secondary.group.position.set(
+          position.x - nx * (offsetBack + 0.22) + sideX * 0.06,
+          position.y + 0.18,
+          position.z - nz * (offsetBack + 0.22) + sideZ * 0.06
+        );
+        secondary.group.rotation.y = Math.atan2(nx, nz) + Math.PI * 0.5;
+        secondary.group.rotation.z = -0.08;
+        secondary.group.scale.set(0.9, 0.9, 0.9);
+
+        for (let i = 0; i < 3; i += 1) {
+          const part = secondary.parts[i];
+          part.mesh.position.set(-dashLength * 0.3, [-0.16, 0.03, 0.14][i], (i - 1) * 0.02);
+          part.mesh.scale.set(dashLength * (0.9 + i * 0.06), 0.11, 1);
+          part.mesh.material.color.setHex([0xff6a32, 0xffc02f, 0xfff6bb][i]);
+          part.mesh.material.opacity = [0.44, 0.36, 0.26][i];
+        }
+
+        for (let i = 3; i < secondary.parts.length; i += 1) {
+          const specPart = secondary.parts[i];
+          const idx = i - 3;
+          specPart.mesh.position.x = 0.72 + idx * 0.13;
+          specPart.mesh.position.y = [0.06, 0.18, -0.08, -0.18][idx];
+          specPart.mesh.scale.setScalar(1.0);
+          specPart.mesh.material.opacity = specPart.opacity * 0.72;
+        }
+      }
     }
   }
 
@@ -205,6 +378,48 @@ export function createActionEffects(scene) {
         exp.mesh.visible = false;
       }
     }
+
+    for (const trail of dashTrails) {
+      if (!trail.active) continue;
+
+      trail.ttl -= dt;
+      const t = Math.max(0, trail.ttl / Math.max(0.0001, trail.life));
+      const fade = t * t * (0.72 + t * 0.28);
+      const pulse = 1 + Math.sin((1 - t) * Math.PI * 2 + trail.wobble) * 0.06;
+
+      trail.group.visible = true;
+      trail.group.position.x += trail.dirX * dt * 30.2;
+      trail.group.position.z += trail.dirZ * dt * 30.2;
+      trail.group.position.y += Math.sin((1 - t) * Math.PI) * dt * 0.02;
+      trail.group.scale.set(
+        trail.stretch * (1 + (1 - t) * 0.55) * pulse,
+        (0.98 + (1 - t) * 0.32) * pulse,
+        1
+      );
+
+      let index = 0;
+      for (const part of trail.parts) {
+        if (part.kind === "streak") {
+          part.mesh.material.opacity = fade * (0.88 - index * 0.14);
+          part.mesh.scale.x += dt * (1.8 + index * 0.22);
+          part.mesh.scale.y = Math.max(0.04, part.mesh.scale.y * (1 - dt * 2.2));
+          part.mesh.position.y += Math.sin((1 - t) * Math.PI * 2 + index) * dt * 0.012;
+          index += 1;
+          continue;
+        }
+
+        const cloudT = fade * (part.opacity ?? 0.5);
+        part.mesh.material.opacity = cloudT;
+        part.mesh.scale.x += dt * 0.45;
+        part.mesh.scale.y += dt * 0.3;
+        part.mesh.rotation.z += dt * (0.22 + index * 0.04);
+      }
+
+      if (trail.ttl <= 0) {
+        trail.active = false;
+        trail.group.visible = false;
+      }
+    }
   }
 
   function dispose() {
@@ -218,6 +433,7 @@ export function createActionEffects(scene) {
         object.material.dispose();
       }
     });
+    dashTrailTexture.dispose();
   }
 
   function emitExplosion(position, options = {}) {
@@ -233,5 +449,36 @@ export function createActionEffects(scene) {
     exp.mesh.material.opacity = options.opacity ?? 0.92;
   }
 
-  return { emit, emitSlash, emitExplosion, update, dispose };
+  function createDashTrailTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 32;
+    const ctx = canvas.getContext("2d");
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+    gradient.addColorStop(0, "rgba(255, 54, 54, 0.0)");
+    gradient.addColorStop(0.08, "rgba(255, 54, 54, 0.18)");
+    gradient.addColorStop(0.16, "rgba(255, 61, 44, 0.9)");
+    gradient.addColorStop(0.38, "rgba(255, 123, 18, 0.95)");
+    gradient.addColorStop(0.63, "rgba(255, 194, 36, 0.82)");
+    gradient.addColorStop(0.86, "rgba(255, 248, 180, 0.42)");
+    gradient.addColorStop(1, "rgba(255, 248, 180, 0.0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const glow = ctx.createRadialGradient(canvas.width * 0.25, canvas.height * 0.5, 1, canvas.width * 0.25, canvas.height * 0.5, canvas.width * 0.42);
+    glow.addColorStop(0, "rgba(255, 255, 255, 0.34)");
+    glow.addColorStop(0.3, "rgba(255, 230, 90, 0.28)");
+    glow.addColorStop(0.7, "rgba(255, 92, 24, 0.18)");
+    glow.addColorStop(1, "rgba(255, 92, 24, 0.0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    return texture;
+  }
+
+  return { emit, emitSlash, emitDashTrail, emitExplosion, update, dispose };
 }

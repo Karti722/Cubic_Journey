@@ -1179,8 +1179,10 @@ export function startGame(uiElement, options = {}) {
       return { x: velocity.x / speed, z: velocity.z / speed };
     }
 
-    const basis = cameraController.getMoveBasis();
-    return { x: basis.forwardX, z: basis.forwardZ };
+    return {
+      x: Math.sin(player.rotation.y),
+      z: Math.cos(player.rotation.y)
+    };
   }
 
   function animate() {
@@ -1297,6 +1299,12 @@ export function startGame(uiElement, options = {}) {
     }
     if (physics.dashed && !paused && !actionBlocked) {
       audio.playSfx("dash", 0.7);
+      effects.emitDashTrail(player.position, getDashDirectionVector(), {
+        life: 0.34,
+        length: 5.3,
+        height: 0.22,
+        offsetBack: 1.35
+      });
       effects.emit("dash", player.position, getDashDirectionVector(), 0.8, 14);
     }
 
